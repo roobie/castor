@@ -18,6 +18,9 @@ lint:
 	cargo fmt --all -- --check
 	cargo clippy --all -- -D warnings
 
+lint-fix:
+	cargo clippy --all --fix
+
 build: deps lint
 	cargo build
 
