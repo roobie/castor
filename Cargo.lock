@@ -131,11 +131,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
-name = "castor"
-version = "0.1.1"
+name = "casq"
+version = "0.2.1"
 dependencies = [
  "anyhow",
- "castor_core",
+ "casq_core",
  "chrono",
  "clap",
  "serde",
@@ -143,8 +143,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "castor_core"
-version = "0.1.1"
+name = "casq_core"
+version = "0.2.1"
 dependencies = [
  "blake3",
  "hex",

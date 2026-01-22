@@ -9,31 +9,31 @@ Castor is a single-binary tool for storing files and directories by their crypto
 - **Content addressing** - Files identified by cryptographic hash, not by path
 - **Garbage collection** - Reclaim space from unreferenced objects with mark & sweep
 - **Simple & fast** - No databases, no network, just files on disk with BLAKE3 hashing
-- **Embeddable** - Rust library (`castor_core`) + CLI binary, easily integrated into your tools
+- **Embeddable** - Rust library (`casq_core`) + CLI binary, easily integrated into your tools
 
 ## Quick Start
 
 ```bash
 # Initialize a store
-castor init
+casq init
 
 # Add files and directories (automatically deduplicated)
-castor add myproject/ --ref-name snapshot-2024-01-21
+casq add myproject/ --ref-name snapshot-2024-01-21
 
 # List what you have
-castor ls
+casq ls
 # Output: snapshot-2024-01-21 -> abc123...
 
 # Explore a tree
-castor ls abc123...
+casq ls abc123...
 
 # Retrieve content
-castor cat <hash>                    # Stream a file to stdout
-castor materialize abc123... ./out   # Restore entire directory
+casq cat <hash>                    # Stream a file to stdout
+casq materialize abc123... ./out   # Restore entire directory
 
 # Clean up unreferenced objects
-castor gc --dry-run                  # Preview
-castor gc                            # Actually delete
+casq gc --dry-run                  # Preview
+casq gc                            # Actually delete
 ```
 
 ## Use Cases
@@ -137,26 +137,26 @@ castor gc                            # Actually delete
 
 ```bash
 # Build from source
-cargo build --release -p castor
+cargo build --release -p casq
 
 # Install to your system
-cargo install --path ./castor
+cargo install --path ./casq
 
 # Or copy the binary
-cp target/release/castor ~/.local/bin/
+cp target/release/casq ~/.local/bin/
 ```
 
 ## Project Structure
 
 This is a Rust workspace with two crates:
 
-- **`castor_core/`** - Core library implementing the storage engine (68 unit tests)
-- **`castor/`** - CLI binary providing the user interface
+- **`casq_core/`** - Core library implementing the storage engine (68 unit tests)
+- **`casq/`** - CLI binary providing the user interface
 
 ## Documentation
 
-- **[CLI README](castor/README.md)** - Complete command reference and examples
-- **[Core Library README](castor_core/README.md)** - API documentation and architecture
+- **[CLI README](casq/README.md)** - Complete command reference and examples
+- **[Core Library README](casq_core/README.md)** - API documentation and architecture
 - **[NOTES.md](NOTES.md)** - Design specification and implementation details
 
 ## Performance & Limitations

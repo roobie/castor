@@ -1,0 +1,78 @@
+# Justfile for casq-test
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Check Python syntax in all test files
+py_compile:
+    uv run python -m py_compile tests/*.py helpers/*.py fixtures/*.py conftest.py
+
+# Run all tests
+test:
+    uv run pytest
+
+# Run tests with verbose output
+test-verbose:
+    uv run pytest -v
+
+# Run only smoke tests
+test-smoke:
+    uv run pytest -m smoke
+
+# Run tests without slow tests
+test-fast:
+    uv run pytest -m "not slow"
+
+# Collect tests without running them
+collect:
+    uv run pytest --collect-only
+
+# Count total tests
+count:
+    @uv run pytest --collect-only -q 2>&1 | tail -1
+
+# Run tests in parallel (requires pytest-xdist)
+test-parallel:
+    uv run pytest -n auto
+
+# Run tests with coverage (requires pytest-cov)
+test-coverage:
+    uv run pytest --cov=. --cov-report=html
+    @echo "Coverage report generated in htmlcov/index.html"
+
+# Run specific test file
+test-file FILE:
+    uv run pytest tests/{{FILE}}
+
+# Run tests matching a pattern
+test-pattern PATTERN:
+    uv run pytest -k "{{PATTERN}}"
+
+# Format Python code (requires black)
+format:
+    uv run black tests/ helpers/ fixtures/ conftest.py
+
+# Lint Python code (requires ruff)
+lint:
+    uv run ruff check tests/ helpers/ fixtures/ conftest.py
+
+# Install dependencies
+install:
+    uv sync
+
+# Clean up Python cache files
+clean:
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    rm -rf .pytest_cache htmlcov .coverage
+
+# Build casq binary (prerequisite for tests)
+build-casq:
+    cd .. && cargo build -p casq
+
+# Full workflow: build casq, install deps, run tests
+ci: build-casq install py_compile test
+
+# Quick verification: syntax check and smoke tests
+verify: py_compile test-smoke

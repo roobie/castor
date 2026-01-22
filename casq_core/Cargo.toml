@@ -1,0 +1,12 @@
+[package]
+name = "casq_core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+blake3 = "1.5"                        # BLAKE3 hashing
+hex = "0.4"                           # Hash hex encoding/decoding
+tempfile = "3.0"                      # Atomic object writes
+ignore = "0.4"                        # Filesystem walking with .gitignore support
+thiserror = "2.0"                     # Error handling

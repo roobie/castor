@@ -35,18 +35,18 @@ You can evolve the format later; just version it.
 
 ## Basic CLI Design
 
-I’ll use a binary name `castore` for concreteness.
+I’ll use a binary name `casqe` for concreteness.
 
 ### Global Layout
 
-- `castore init [--root PATH]`
-- `castore add PATH...`
-- `castore materialize HASH DEST`
-- `castore cat HASH`
-- `castore ls HASH`
-- `castore gc [options]`
-- `castore refs [subcommands]` (optional in MVP)
-- `castore stat HASH`
+- `casqe init [--root PATH]`
+- `casqe add PATH...`
+- `casqe materialize HASH DEST`
+- `casqe cat HASH`
+- `casqe ls HASH`
+- `casqe gc [options]`
+- `casqe refs [subcommands]` (optional in MVP)
+- `casqe stat HASH`
 
 All commands accept `--store-root` (env var fallback like `CASTORE_ROOT`).
 
@@ -61,7 +61,7 @@ Initialize a new store.
 **Usage:**
 
 ```bash
-castore init [--root PATH] [--algo blake3|sha256]
+casqe init [--root PATH] [--algo blake3|sha256]
 ```
 
 **Behavior (MVP):**
@@ -80,9 +80,9 @@ Add files or directories to the store. Returns a root hash.
 **Usage:**
 
 ```bash
-castore add PATH...
+casqe add PATH...
 # or
-castore add --stdin
+casqe add --stdin
 ```
 
 **Behavior:**
@@ -114,7 +114,7 @@ Reconstruct a tree, blob, or file hierarchy from a hash.
 **Usage:**
 
 ```bash
-castore materialize HASH DEST
+casqe materialize HASH DEST
 ```
 
 **Behavior:**
@@ -135,7 +135,7 @@ List contents for a tree, or show basic info for a blob.
 **Usage:**
 
 ```bash
-castore ls HASH
+casqe ls HASH
 ```
 
 **Behavior:**
@@ -159,7 +159,7 @@ Output blob contents to stdout.
 **Usage:**
 
 ```bash
-castore cat HASH
+casqe cat HASH
 ```
 
 **Behavior:**
@@ -176,7 +176,7 @@ Show metadata about an object.
 **Usage:**
 
 ```bash
-castore stat HASH
+casqe stat HASH
 ```
 
 **Behavior:**
@@ -208,7 +208,7 @@ Garbage collect unreferenced objects based on refs file(s).
 **Usage:**
 
 ```bash
-castore gc [--dry-run]
+casqe gc [--dry-run]
 ```
 
 **Behavior:**
@@ -220,9 +220,9 @@ castore gc [--dry-run]
 You can add:
 
 ```bash
-castore refs add NAME HASH
-castore refs list
-castore refs rm NAME
+casqe refs add NAME HASH
+casqe refs list
+casqe refs rm NAME
 ```
 
 …as a small extension if desired for MVP.

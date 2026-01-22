@@ -25,14 +25,15 @@ run BINARY *ARGS: build
 	cargo run --release --bin {{BINARY}} -- {{ARGS}}
 
 # Convenience wrappers for unified binary
-run-castor *ARGS:
-	just run castor {{ARGS}}
+run-casq *ARGS:
+	just run casq {{ARGS}}
 
 test: build
 	cargo test
+	just -f ./casq-test/justfile test
 
 # Install all three binaries (unified + standalone for backward compatibility)
 install: test
-	cargo install --path ./castor
+	cargo install --path ./casq
 
 all: build test install

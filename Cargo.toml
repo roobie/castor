@@ -1,8 +1,8 @@
 [workspace]
-members = ["castor_core", "castor"]
+members = ["casq_core", "casq"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.1"
 authors = ["Björn Roberg <bjorn.roberg@gmail.com>"]
 edition = "2024"

@@ -22,8 +22,8 @@ Key characteristics:
 
 This is a **Rust workspace** with two crates:
 
-- `castor_core/`: Core library implementing the storage engine, hashing, and object management
-- `castor/`: CLI binary that provides the user interface
+- `casq_core/`: Core library implementing the storage engine, hashing, and object management
+- `casq/`: CLI binary that provides the user interface
 
 The project is in **early development** - both crates currently contain only "Hello, world!" placeholder code.
 
@@ -38,17 +38,17 @@ cargo build
 cargo build --release
 
 # Build specific crate
-cargo build -p castor
-cargo build -p castor_core
+cargo build -p casq
+cargo build -p casq_core
 ```
 
 ### Running
 ```bash
 # Run the CLI (once implemented)
-cargo run -p castor -- <args>
+cargo run -p casq -- <args>
 
 # Or after building
-./target/debug/castor <args>
+./target/debug/casq <args>
 ```
 
 ### Testing
@@ -57,8 +57,8 @@ cargo run -p castor -- <args>
 cargo test
 
 # Run tests for specific crate
-cargo test -p castor_core
-cargo test -p castor
+cargo test -p casq_core
+cargo test -p casq
 
 # Run with output
 cargo test -- --nocapture
@@ -126,29 +126,29 @@ $STORE_ROOT/
 ### Planned CLI Commands
 
 ```bash
-castor init [--root PATH] [--algo blake3]
-castor add PATH...
-castor materialize HASH DEST
-castor cat HASH          # Output blob to stdout
-castor ls HASH           # List tree contents or show blob info
-castor stat HASH         # Show object metadata
-castor gc [--dry-run]    # Garbage collect unreferenced objects
-castor refs add NAME HASH
-castor refs list
-castor refs rm NAME
+casq init [--root PATH] [--algo blake3]
+casq add PATH...
+casq materialize HASH DEST
+casq cat HASH          # Output blob to stdout
+casq ls HASH           # List tree contents or show blob info
+casq stat HASH         # Show object metadata
+casq gc [--dry-run]    # Garbage collect unreferenced objects
+casq refs add NAME HASH
+casq refs list
+casq refs rm NAME
 ```
 
 ### Dependencies
 
-**castor_core:**
+**casq_core:**
 - `xxhash-rust` (xxh3): Fast hashing (placeholder; may switch to BLAKE3)
 - `serde/serde_json`: Serialization
 - `ignore`: Filesystem walking with .gitignore support
 - `chrono`: Timestamp handling
 - `thiserror`: Error definitions
 
-**castor:**
-- `castor_core`: The core library
+**casq:**
+- `casq_core`: The core library
 - `clap`: CLI argument parsing with derive macros
 - `anyhow`: Error handling in main
 - `serde/serde_json`: For any JSON output
