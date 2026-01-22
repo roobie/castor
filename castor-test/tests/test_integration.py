@@ -220,9 +220,9 @@ def test_cat_ls_stat_consistency(cli, initialized_store, workspace):
     # Add file
     hash_val = cli.add(test_file, root=initialized_store).stdout.strip().split()[0]
 
-    # Cat should output content
+    # Cat should output content (cat returns bytes)
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == content
+    assert cat_result.stdout == content.encode('utf-8')
 
     # Stat should show blob type
     stat_result = cli.stat(hash_val, root=initialized_store)

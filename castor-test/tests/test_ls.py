@@ -11,7 +11,7 @@ def test_ls_refs_empty_store(cli, initialized_store):
 
     assert result.returncode == 0
     # Empty store should have no refs
-    assert result.stdout.strip() == ""
+    assert result.stdout.strip() == "No references (use 'castor add --ref-name' to create one)"
 
 
 def test_ls_refs_single_ref(cli, initialized_store, sample_file):

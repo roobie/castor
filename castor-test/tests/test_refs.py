@@ -105,7 +105,7 @@ def test_refs_list_empty(cli, initialized_store):
     result = cli.refs_list(root=initialized_store)
 
     assert result.returncode == 0
-    assert result.stdout.strip() == ""
+    assert result.stdout.strip() == "No references"
 
 
 def test_refs_list_single_ref(cli, initialized_store, sample_file):

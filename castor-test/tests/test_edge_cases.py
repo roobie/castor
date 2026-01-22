@@ -198,9 +198,9 @@ def test_file_with_only_newlines(cli, initialized_store, workspace):
     assert result.returncode == 0
     hash_val = result.stdout.strip().split()[0]
 
-    # Cat should preserve newlines
+    # Cat should preserve newlines (cat returns bytes)
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == "\n\n\n\n\n"
+    assert cat_result.stdout == b"\n\n\n\n\n"
 
 
 @pytest.mark.edge_case
@@ -213,7 +213,7 @@ def test_single_character_file(cli, initialized_store, workspace):
 
     hash_val = result.stdout.strip().split()[0]
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == "a"
+    assert cat_result.stdout == b"a"
 
 
 @pytest.mark.edge_case

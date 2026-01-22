@@ -26,6 +26,7 @@ class CastorCLI:
         expect_success: bool = True,
         input_data: Optional[str] = None,
         root: Optional[Path] = None,
+        binary_mode: bool = False,
     ) -> subprocess.CompletedProcess:
         """
         Run castor with the given arguments.
@@ -36,6 +37,7 @@ class CastorCLI:
             expect_success: If True, check=True for subprocess.run
             input_data: Data to send to stdin
             root: Store root to use (overrides default_root)
+            binary_mode: If True, return binary stdout/stderr instead of text
 
         Returns:
             CompletedProcess instance
@@ -60,7 +62,7 @@ class CastorCLI:
         return subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
+            text=(not binary_mode),
             input=input_data,
             check=expect_success,
             env=final_env,
@@ -111,7 +113,7 @@ class CastorCLI:
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Output a blob to stdout."""
-        return self.run("cat", hash_str, root=root, expect_success=expect_success)
+        return self.run("cat", hash_str, root=root, expect_success=expect_success, binary_mode=True)
 
     def ls(
         self,
