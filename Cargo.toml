@@ -1,0 +1,8 @@
+[workspace]
+members = ["castor_core", "castor"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.1"
+authors = ["Björn Roberg <bjorn.roberg@gmail.com>"]
+edition = "2024"

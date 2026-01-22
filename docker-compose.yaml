@@ -1,0 +1,33 @@
+services:
+  agent:
+    # image: ghcr.io/roobie/agent-sandbox-claude:latest
+    image: agent-sandbox-claude:local
+    container_name: claude-sandbox
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      # Your project workspace
+      - .:/workspace
+      # Persist Claude credentials
+      - claude-state:/home/dev/.claude
+      # Persist shell history
+      - command-history:/commandhistory
+      # Persist .cache files (mise)
+      - mise-state:/home/dev/.mise
+      # Host Claude config (optional - comment out if not needed)
+      # - ${HOME}/.claude/CLAUDE.md:/home/dev/.claude/CLAUDE.md:ro
+      # - ${HOME}/.claude/settings.json:/home/dev/.claude/settings.json:ro
+      # To customize network policy, uncomment and create the file:
+      - ${HOME}/.config/agent-sandbox/policy.json:/etc/agent-sandbox/policy.json:ro
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      - TZ=${TZ:-America/Los_Angeles}
+      - CLAUDE_CONFIG_DIR=/home/dev/.claude
+
+volumes:
+  claude-state:
+  command-history:
+  mise-state:
