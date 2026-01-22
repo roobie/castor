@@ -1,1 +1,0 @@
-"""Castor CLI test suite."""
