@@ -53,10 +53,10 @@ enum Commands {
         hash: String,
     },
 
-    /// List tree contents or show blob info
+    /// List tree contents or show blob info (lists refs if no hash given)
     Ls {
-        /// Hash of the object
-        hash: String,
+        /// Hash of the object (lists all refs if omitted)
+        hash: Option<String>,
 
         /// Show detailed information
         #[arg(short, long)]
@@ -197,11 +197,40 @@ fn cmd_cat(root: &Path, hash_str: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_ls(root: &Path, hash_str: &str, long: bool) -> Result<()> {
+fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
-    let hash = Hash::from_hex(hash_str).with_context(|| format!("Invalid hash: {}", hash_str))?;
+    // If no hash provided, list all refs
+    if hash_str.is_none() {
+        let refs = store
+            .refs()
+            .list()
+            .with_context(|| "Failed to list references")?;
+
+        if refs.is_empty() {
+            println!("No references (use 'castor add --ref-name' to create one)");
+        } else {
+            for (name, hash) in refs {
+                if long {
+                    // Try to determine type
+                    let type_str = if store.get_tree(&hash).is_ok() {
+                        "tree"
+                    } else {
+                        "blob"
+                    };
+                    println!("{} {} -> {}", type_str, name, hash);
+                } else {
+                    println!("{} -> {}", name, hash);
+                }
+            }
+        }
+        return Ok(());
+    }
+
+    // Hash was provided - show object contents
+    let hash = Hash::from_hex(hash_str.as_ref().unwrap())
+        .with_context(|| format!("Invalid hash: {}", hash_str.as_ref().unwrap()))?;
 
     // Check if it's a tree or blob
     let obj_path = store.object_path(&hash);

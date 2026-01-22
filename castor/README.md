@@ -34,8 +34,9 @@ castor add mydir/
 # Add with a named reference
 castor add important-data/ --ref-name backup-2024
 
-# List references
-castor refs list
+# Discover what content you have
+castor ls              # Lists all references
+castor ls --long       # With type info
 
 # List tree contents
 castor ls <hash>
@@ -144,15 +145,15 @@ castor cat abc123... | grep "search term"
 castor cat abc123... > output.txt
 ```
 
-### `castor ls <HASH>`
+### `castor ls [HASH]`
 
-List tree contents or show blob info.
+List references (if no hash), tree contents, or blob info.
 
 ```bash
-castor ls <HASH> [--long]
+castor ls [HASH] [--long]
 
 Arguments:
-  <HASH>  Hash of the object
+  [HASH]  Hash of the object (optional - lists all refs if omitted)
 
 Options:
   -l, --long  Show detailed information
@@ -161,18 +162,29 @@ Options:
 **Examples:**
 
 ```bash
+# List all references (discover what content you have)
+castor ls
+
+# List all references with type info
+castor ls --long
+
 # List directory contents
 castor ls abc123...
 
 # Show detailed listing with modes and hashes
 castor ls --long abc123...
 
-# Output format (--long):
+# Output format for refs:
+# my-backup -> abc123...
+
+# Output format for trees (--long):
 # b 100644 <hash> filename.txt
 # t 040755 <hash> subdir
 ```
 
 Type codes: `b` = blob (file), `t` = tree (directory)
+
+**Tip:** Use `castor ls` to discover content, then `castor ls <hash>` to explore it.
 
 ### `castor stat <HASH>`
 
@@ -344,10 +356,15 @@ castor add file.txt
 ### Exploring Content
 
 ```bash
-# Add a directory
-HASH=$(castor add myproject/ | awk '{print $1}')
+# Add a directory with a reference
+castor add myproject/ --ref-name current-work
 
-# See what's in it
+# Discover what's in your store
+castor ls
+# Output: current-work -> abc123...
+
+# Explore the tree
+HASH=$(castor ls | head -1 | awk '{print $3}')
 castor ls $HASH
 
 # Look at a specific file
