@@ -1,1 +1,1 @@
-"""Castor CLI test suite."""
+"""casq CLI test suite."""

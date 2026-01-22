@@ -1,12 +1,12 @@
-"""CLI invocation wrapper for Castor."""
+"""CLI invocation wrapper for casq."""
 
 import subprocess
 from pathlib import Path
 from typing import Optional, Union
 
 
-class CastorCLI:
-    """Wrapper for invoking the Castor CLI binary."""
+class casqCLI:
+    """Wrapper for invoking the casq CLI binary."""
 
     def __init__(self, binary_path: Path, default_root: Optional[Path] = None):
         """

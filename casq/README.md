@@ -1,10 +1,10 @@
-# casq
+# `casq`
 
 A content-addressed file store CLI using BLAKE3.
 
 ## Overview
 
-**Castor** is a command-line tool for managing content-addressed storage. It stores files and directories by their cryptographic hash, providing automatic deduplication, garbage collection, and named references.
+**`casq`** is a command-line tool for managing content-addressed storage. It stores files and directories by their cryptographic hash, providing automatic deduplication, garbage collection, and named references.
 
 This is the CLI binary that uses the `casq_core` library.
 
@@ -434,7 +434,7 @@ Caused by:
 
 ## Comparison to Git
 
-| Feature | Castor | Git |
+| Feature | casq | Git |
 |---------|--------|-----|
 | Content addressing | ✓ | ✓ |
 | Deduplication | ✓ | ✓ |
@@ -446,7 +446,7 @@ Caused by:
 | Network | ✗ | ✓ |
 | Use case | File storage | Version control |
 
-Castor is simpler than git - it's just content-addressed storage without the version control features.
+casq is simpler than git - it's just content-addressed storage without the version control features.
 
 ## Troubleshooting
 

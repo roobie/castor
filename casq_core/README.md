@@ -4,7 +4,7 @@ A content-addressed file store (CAS) library using BLAKE3 hashing.
 
 ## Overview
 
-`casq_core` is a Rust library that provides the core functionality for **Castor**, a minimal, single-binary content-addressed storage system. It stores files and directories by their cryptographic hash, ensuring immutable, deduplicated storage with built-in garbage collection.
+`casq_core` is a Rust library that provides the core functionality for **casq**, a minimal, single-binary content-addressed storage system. It stores files and directories by their cryptographic hash, ensuring immutable, deduplicated storage with built-in garbage collection.
 
 Think of it as a minimal git object store or restic backend, but generic and simple.
 
@@ -241,7 +241,7 @@ thiserror = "2.0"   # Error handling
 
 ## Contributing
 
-This library is part of the **Castor** project. When contributing:
+This library is part of the **casq** project. When contributing:
 
 1. Ensure all tests pass: `cargo test -p casq_core`
 2. Maintain clippy cleanliness: `cargo clippy -p casq_core -- -D warnings`

@@ -1,1 +1,1 @@
-"""Helper utilities for Castor CLI testing."""
+"""Helper utilities for casq CLI testing."""

@@ -1,10 +1,10 @@
-# Castor CLI Test Suite
+# casq CLI Test Suite
 
-Comprehensive pytest-based test suite for the Castor content-addressed file store CLI.
+Comprehensive pytest-based test suite for the casq content-addressed file store CLI.
 
 ## Overview
 
-This test suite provides **253+ tests** achieving 100% CLI surface coverage for Castor. It tests all commands, options, error paths, edge cases, and integration scenarios using real end-to-end execution of the Castor binary.
+This test suite provides **253+ tests** achieving 100% CLI surface coverage for casq. It tests all commands, options, error paths, edge cases, and integration scenarios using real end-to-end execution of the casq binary.
 
 ### Test Coverage
 
@@ -28,7 +28,7 @@ This test suite provides **253+ tests** achieving 100% CLI surface coverage for 
 
 ### Prerequisites
 
-1. **Build Castor binary:**
+1. **Build casq binary:**
    ```bash
    cd /workspace
    cargo build -p casq
@@ -171,11 +171,11 @@ This ensures:
 
 **Core fixtures** (defined in `conftest.py`):
 
-- `casq_binary` - Path to compiled Castor binary
+- `casq_binary` - Path to compiled casq binary
 - `casq_store` - Empty store directory (not initialized)
 - `initialized_store` - Pre-initialized store ready for use
 - `workspace` - Temporary workspace for creating test files
-- `cli` - Configured `CastorCLI` wrapper instance
+- `cli` - Configured `casqCLI` wrapper instance
 - `sample_file` - Simple text file
 - `sample_tree` - Flat directory with files
 - `nested_tree` - Nested directory structure
@@ -313,12 +313,12 @@ pytest -l
 
 ### CLI Wrapper (`helpers/cli.py`)
 
-Provides convenient wrappers for all Castor commands:
+Provides convenient wrappers for all casq commands:
 
 ```python
-from helpers.cli import CastorCLI
+from helpers.cli import casqCLI
 
-cli = CastorCLI(binary_path)
+cli = casqCLI(binary_path)
 
 # Convenience methods
 cli.init(root=store_path)
@@ -481,10 +481,10 @@ def test_command_error_condition(cli, initialized_store):
 ### Binary Not Found
 
 ```
-FileNotFoundError: Castor binary not found at /workspace/target/debug/casq
+FileNotFoundError: casq binary not found at /workspace/target/debug/casq
 ```
 
-**Solution:** Build the Castor binary first:
+**Solution:** Build the casq binary first:
 ```bash
 cd /workspace
 cargo build -p casq
@@ -494,7 +494,7 @@ cargo build -p casq
 
 **Possible causes:**
 - Command waiting for input
-- Infinite loop in Castor binary
+- Infinite loop in casq binary
 - Very large file test
 
 **Solutions:**
@@ -525,7 +525,7 @@ Large file tests may consume significant disk space.
 ### GitHub Actions Example
 
 ```yaml
-name: Test Castor CLI
+name: Test casq CLI
 
 on: [push, pull_request]
 
@@ -535,7 +535,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build Castor
+      - name: Build casq
         run: cargo build --release -p casq
 
       - name: Install UV
@@ -587,12 +587,12 @@ Expected test execution times:
 
 ## License
 
-This test suite is part of the Castor project and follows the same license.
+This test suite is part of the casq project and follows the same license.
 
 ## Support
 
 For issues with the test suite:
 1. Check this README
 2. Review test patterns
-3. Check Castor CLI documentation in `/workspace/CLAUDE.md`
+3. Check casq CLI documentation in `/workspace/CLAUDE.md`
 4. Open an issue with test failure details

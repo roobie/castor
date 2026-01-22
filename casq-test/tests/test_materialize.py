@@ -460,5 +460,5 @@ def test_materialize_file_with_special_characters(cli, initialized_store, worksp
 def test_materialize_symlink_handling(cli, initialized_store, workspace):
     """Test behavior when materializing tree that originally had symlinks."""
     # Note: This tests implementation-specific behavior
-    # Castor may or may not preserve symlinks
+    # casq may or may not preserve symlinks
     pytest.skip("Symlink handling is implementation-specific")

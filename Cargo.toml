@@ -3,14 +3,13 @@ members = ["casq_core", "casq"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Björn Roberg <bjorn.roberg@gmail.com>"]
 edition = "2024"
 license-file = "LICENSE"
 readme = "README.md"
-description = "A minimal content-addressed file store using BLAKE3."
 repository = "https://github.com/roobie/casq"
 keywords = ["storage", "content-addressable", "file-system-tool", "backup"]
 
 [workspace.dependencies]
-casq_core = { version = "0.2.1", path = "casq_core" }
+casq_core = { version = "0.2.2", path = "casq_core" }

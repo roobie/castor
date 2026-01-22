@@ -88,7 +88,7 @@ def test_init_nonexistent_parent_directory(cli, tmp_path):
     """Test init with parent directory that doesn't exist."""
     deep_path = tmp_path / "does" / "not" / "exist" / "store"
 
-    # Castor may or may not create parent directories
+    # casq may or may not create parent directories
     # If it fails, that's acceptable behavior
     result = cli.run("init", "--root", str(deep_path), expect_success=False)
 

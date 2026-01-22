@@ -2,9 +2,9 @@
 
 **A minimal content-addressed file store using BLAKE3.**
 
-Castor is a single-binary tool for storing files and directories by their cryptographic hash. Think of it as a lightweight git object store or restic backend—but simpler, local-only, and purpose-built for content-addressed storage without the version control overhead.
+`casq` is a single-binary tool for storing files and directories by their cryptographic hash. Think of it as a lightweight git object store or restic backend—but simpler, local-only, and purpose-built for content-addressed storage without the version control overhead.
 
-**Why Castor?**
+**Why `casq`?**
 - **Automatic deduplication** - Identical content stored only once, even across different directories
 - **Content addressing** - Files identified by cryptographic hash, not by path
 - **Garbage collection** - Reclaim space from unreferenced objects with mark & sweep

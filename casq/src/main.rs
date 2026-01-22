@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Castor - A content-addressed file store
+/// casq - A content-addressed file store
 #[derive(Parser)]
 #[command(name = "casq")]
 #[command(about = "Content-addressed file store using BLAKE3", long_about = None)]

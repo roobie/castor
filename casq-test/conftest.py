@@ -2,14 +2,14 @@
 
 import pytest
 from pathlib import Path
-from helpers.cli import CastorCLI
+from helpers.cli import casqCLI
 from fixtures import sample_files
 
 
 @pytest.fixture(scope="session")
 def casq_binary() -> Path:
     """
-    Path to the compiled Castor binary.
+    Path to the compiled casq binary.
 
     Returns:
         Path to casq binary
@@ -22,7 +22,7 @@ def casq_binary() -> Path:
 
     if not binary_path.exists():
         raise FileNotFoundError(
-            f"Castor binary not found at {binary_path}. "
+            f"casq binary not found at {binary_path}. "
             "Run 'cargo build -p casq' first."
         )
 
@@ -48,7 +48,7 @@ def workspace(tmp_path) -> Path:
 @pytest.fixture
 def casq_store(tmp_path) -> Path:
     """
-    Path for a Castor store (not initialized).
+    Path for a casq store (not initialized).
 
     Args:
         tmp_path: Pytest's temporary directory fixture
@@ -64,7 +64,7 @@ def casq_store(tmp_path) -> Path:
 @pytest.fixture
 def initialized_store(casq_store, cli) -> Path:
     """
-    Pre-initialized Castor store.
+    Pre-initialized casq store.
 
     Args:
         casq_store: Store directory fixture
@@ -78,7 +78,7 @@ def initialized_store(casq_store, cli) -> Path:
 
 
 @pytest.fixture
-def cli(casq_binary) -> CastorCLI:
+def cli(casq_binary) -> casqCLI:
     """
     Configured CLI wrapper instance.
 
@@ -86,9 +86,9 @@ def cli(casq_binary) -> CastorCLI:
         casq_binary: Binary path fixture
 
     Returns:
-        CastorCLI instance
+        casqCLI instance
     """
-    return CastorCLI(casq_binary)
+    return casqCLI(casq_binary)
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ def sample_file(workspace) -> Path:
     """
     return sample_files.create_sample_file(
         workspace / "sample.txt",
-        "Hello, Castor!\n"
+        "Hello, casq!\n"
     )
 
 

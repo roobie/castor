@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Castor** is a content-addressed file store (CAS) - a minimal, single-binary system for storing and retrieving files and directories by their cryptographic hash. Think "minimal git object store / restic backend" but generic and simple.
+**casq** is a content-addressed file store (CAS) - a minimal, single-binary system for storing and retrieving files and directories by their cryptographic hash. Think "minimal git object store / restic backend" but generic and simple.
 
 Key characteristics:
 - Local-only, single-user, no network support

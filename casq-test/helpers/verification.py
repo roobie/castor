@@ -7,7 +7,7 @@ from typing import List, Dict
 
 def verify_store_structure(store_path: Path, algo: str = "blake3-256") -> bool:
     """
-    Verify the basic structure of a Castor store.
+    Verify the basic structure of a casq store.
 
     Args:
         store_path: Path to the store root
@@ -254,7 +254,7 @@ def calculate_expected_hash(content: bytes) -> str:
     Calculate the expected BLAKE3 hash for given content.
 
     Note: This is a placeholder. The actual implementation should use
-    the same hashing library as Castor.
+    the same hashing library as casq.
 
     Args:
         content: Content to hash
@@ -262,6 +262,6 @@ def calculate_expected_hash(content: bytes) -> str:
     Returns:
         Hex hash string
     """
-    # For now, we'll rely on Castor's output for hash verification
+    # For now, we'll rely on casq's output for hash verification
     # This could be implemented with python-blake3 if needed
     raise NotImplementedError("Hash calculation not implemented yet")

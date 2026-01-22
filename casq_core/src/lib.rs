@@ -1,4 +1,4 @@
-//! # Castor Core
+//! # casq Core
 //!
 //! A content-addressed file store (CAS) using BLAKE3 hashing.
 //!
