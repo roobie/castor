@@ -4,7 +4,12 @@
       "Bash(cargo check:*)",
       "Bash(cargo test:*)",
       "Bash(cargo clippy:*)",
-      "Bash(cargo fmt:*)"
+      "Bash(cargo fmt:*)",
+      "Bash(cargo build:*)",
+      "Bash(/workspace/target/debug/castor:*)",
+      "Bash(/workspace/target/debug/castor gc:*)",
+      "Bash(/workspace/target/debug/castor materialize:*)",
+      "Bash(/workspace/target/release/castor:*)"
     ]
   }
 }
