@@ -1,0 +1,9 @@
+[project]
+name = "castor-test"
+version = "0.1.0"
+description = "Test harness for the castor CLI program"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=9.0.2",
+]
