@@ -213,22 +213,22 @@ impl Store {
                     }
 
                     // Check if it's a tree
-                    if let Ok(header) = self.read_object_header(&obj_path) {
-                        if header.object_type == ObjectType::Tree {
-                            // Get size
-                            let size = fs::metadata(&obj_path)?.len();
+                    if let Ok(header) = self.read_object_header(&obj_path)
+                        && header.object_type == ObjectType::Tree
+                    {
+                        // Get size
+                        let size = fs::metadata(&obj_path)?.len();
 
-                            // Get tree entries to count them and collect child refs
-                            if let Ok(entries) = self.get_tree(&hash) {
-                                let entry_count = entries.len();
+                        // Get tree entries to count them and collect child refs
+                        if let Ok(entries) = self.get_tree(&hash) {
+                            let entry_count = entries.len();
 
-                                // Collect all child hashes from this unreachable tree
-                                for entry in &entries {
-                                    child_refs.insert(entry.hash);
-                                }
-
-                                unreachable_trees.push((hash, entry_count, size));
+                            // Collect all child hashes from this unreachable tree
+                            for entry in &entries {
+                                child_refs.insert(entry.hash);
                             }
+
+                            unreachable_trees.push((hash, entry_count, size));
                         }
                     }
                 }

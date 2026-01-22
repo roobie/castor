@@ -159,10 +159,10 @@ impl Journal {
                 continue;
             }
 
-            if let Ok(entry) = JournalEntry::from_line(line) {
-                if !reachable.contains(&entry.hash) {
-                    orphaned.push(entry);
-                }
+            if let Ok(entry) = JournalEntry::from_line(line)
+                && !reachable.contains(&entry.hash)
+            {
+                orphaned.push(entry);
             }
         }
 
