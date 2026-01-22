@@ -1,4 +1,4 @@
-# Castor
+# `casq`
 
 **A minimal content-addressed file store using BLAKE3.**
 
