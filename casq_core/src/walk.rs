@@ -2,6 +2,7 @@
 
 use crate::error::{Error, Result};
 use crate::hash::Hash;
+use crate::journal::JournalEntry;
 use crate::store::Store;
 use crate::tree::{EntryType, TreeEntry, file_modes};
 use std::fs;
@@ -12,6 +13,7 @@ impl Store {
     ///
     /// If the path is a file, creates a blob and returns its hash.
     /// If the path is a directory, recursively creates trees and returns the root tree hash.
+    /// Records the operation in the journal.
     pub fn add_path(&self, path: &Path) -> Result<Hash> {
         if !path.exists() {
             return Err(Error::Io {
@@ -24,16 +26,46 @@ impl Store {
 
         let metadata = fs::metadata(path)?;
 
-        if metadata.is_file() {
-            self.add_file(path)
+        let hash = if metadata.is_file() {
+            self.add_file(path)?
         } else if metadata.is_dir() {
-            self.add_directory(path)
+            self.add_directory(path)?
         } else {
-            Err(Error::invalid_hash(format!(
+            return Err(Error::invalid_hash(format!(
                 "Unsupported file type: {}",
                 path.display()
-            )))
-        }
+            )));
+        };
+
+        // Append to journal
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        // Get metadata for journal
+        let (entry_count, approx_size) = if metadata.is_file() {
+            (1, metadata.len())
+        } else {
+            // For directories, get tree entry count and object size
+            let tree = self.get_tree(&hash)?;
+            let obj_path = self.object_path(&hash);
+            let obj_size = fs::metadata(&obj_path)?.len();
+            (tree.len(), obj_size)
+        };
+
+        let journal_metadata = format!("entries={},size={}", entry_count, approx_size);
+        let journal_entry = JournalEntry::new(
+            timestamp,
+            "add".to_string(),
+            hash,
+            path.display().to_string(),
+            journal_metadata,
+        );
+
+        self.journal().append(&journal_entry)?;
+
+        Ok(hash)
     }
 
     /// Add a single file as a blob.

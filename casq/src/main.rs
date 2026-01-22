@@ -76,6 +76,24 @@ enum Commands {
         dry_run: bool,
     },
 
+    /// Find orphaned tree roots (unreferenced trees)
+    Orphans {
+        /// Show detailed information
+        #[arg(short, long)]
+        long: bool,
+    },
+
+    /// View operation journal
+    Journal {
+        /// Show only recent N entries
+        #[arg(long)]
+        recent: Option<usize>,
+
+        /// Show only orphaned entries
+        #[arg(long)]
+        orphans: bool,
+    },
+
     /// Manage references
     #[command(subcommand)]
     Refs(RefsCommands),
@@ -119,6 +137,8 @@ fn main() -> Result<()> {
         Commands::Ls { hash, long } => cmd_ls(&root, &hash, long),
         Commands::Stat { hash } => cmd_stat(&root, &hash),
         Commands::Gc { dry_run } => cmd_gc(&root, dry_run),
+        Commands::Orphans { long } => cmd_orphans(&root, long),
+        Commands::Journal { recent, orphans } => cmd_journal(&root, recent, orphans),
         Commands::Refs(refs_cmd) => match refs_cmd {
             RefsCommands::Add { name, hash } => cmd_refs_add(&root, &name, &hash),
             RefsCommands::List => cmd_refs_list(&root),
@@ -330,6 +350,81 @@ fn cmd_gc(root: &Path, dry_run: bool) -> Result<()> {
     } else {
         println!("Deleted {} objects", stats.objects_deleted);
         println!("Freed {} bytes", stats.bytes_freed);
+    }
+
+    Ok(())
+}
+
+fn cmd_orphans(root: &Path, long: bool) -> Result<()> {
+    let store =
+        Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
+
+    let orphans = store
+        .find_orphan_roots()
+        .with_context(|| "Failed to find orphan roots")?;
+
+    if orphans.is_empty() {
+        println!("No orphaned tree roots found");
+        return Ok(());
+    }
+
+    for orphan in orphans {
+        if long {
+            println!("Hash: {}", orphan.hash);
+            println!("Type: tree");
+            println!("Entries: {}", orphan.entry_count);
+            println!("Approx size: {} bytes", orphan.approx_size);
+            println!("---");
+        } else {
+            println!("{}  {} entries", orphan.hash, orphan.entry_count);
+        }
+    }
+
+    Ok(())
+}
+
+fn cmd_journal(root: &Path, recent: Option<usize>, orphans: bool) -> Result<()> {
+    let store =
+        Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
+
+    let entries = if orphans {
+        // Show only orphaned entries
+        store
+            .find_orphan_journal_entries()
+            .with_context(|| "Failed to find orphaned journal entries")?
+    } else if let Some(count) = recent {
+        // Show recent N entries
+        store
+            .journal()
+            .read_recent(count)
+            .with_context(|| "Failed to read journal entries")?
+    } else {
+        // Show all entries (default to recent 10 if not specified)
+        store
+            .journal()
+            .read_recent(10)
+            .with_context(|| "Failed to read journal entries")?
+    };
+
+    if entries.is_empty() {
+        if orphans {
+            println!("No orphaned journal entries found");
+        } else {
+            println!("No journal entries");
+        }
+        return Ok(());
+    }
+
+    for entry in entries {
+        // Format timestamp as human-readable
+        let datetime = chrono::DateTime::from_timestamp(entry.timestamp, 0)
+            .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+        let formatted_time = datetime.format("%Y-%m-%d %H:%M:%S");
+
+        println!(
+            "{}  {}  {}  {}  {}",
+            formatted_time, entry.operation, entry.hash, entry.path, entry.metadata
+        );
     }
 
     Ok(())

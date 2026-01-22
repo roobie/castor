@@ -251,10 +251,10 @@ This library is part of the **casq** project. When contributing:
 
 ## License
 
-See the workspace LICENSE file for details.
+> Apache-2.0
 
 ## See Also
 
-- **casq** - CLI binary using this library (coming soon)
+- [**casq**](https://crates.io/crates/casq) - CLI binary using this library
 - **NOTES.md** - Detailed design and specification
 - **CLAUDE.md** - Development guidelines for AI assistants

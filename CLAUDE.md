@@ -89,6 +89,7 @@ Based on NOTES.md, the system will implement:
 ```
 $STORE_ROOT/
   config               # Store configuration (algorithm, version)
+  journal              # Operation log (timestamp|operation|hash|path|metadata)
   objects/
     blake3/           # Initially using BLAKE3 hashing (via xxhash-rust for now)
       ab/
@@ -123,19 +124,78 @@ $STORE_ROOT/
 38    N    name bytes (UTF-8)
 ```
 
-### Planned CLI Commands
+### CLI Commands
 
 ```bash
 casq init [--root PATH] [--algo blake3]
-casq add PATH...
+casq add PATH... [--ref-name NAME]
 casq materialize HASH DEST
 casq cat HASH          # Output blob to stdout
-casq ls HASH           # List tree contents or show blob info
+casq ls HASH [--long]  # List tree contents or show blob info
 casq stat HASH         # Show object metadata
 casq gc [--dry-run]    # Garbage collect unreferenced objects
+casq orphans [--long]  # Find orphaned tree roots (unreferenced trees)
+casq journal [--recent N] [--orphans]  # View operation journal
 casq refs add NAME HASH
 casq refs list
 casq refs rm NAME
+```
+
+### New Features: Orphan Discovery
+
+**Problem:** When running `casq add /path` without `--ref-name`, the tree hash is printed but not stored. These objects become orphaned and will be deleted by GC.
+
+**Solutions:**
+
+1. **`casq orphans` command** - Discover unreferenced tree roots on-demand:
+   - Identifies trees that exist in the store but have no references
+   - Filters out child trees (only shows top-level orphan roots)
+   - Use `--long` for detailed information
+
+   ```bash
+   $ casq orphans
+   abc123def...  15 entries
+   def456abc...  3 entries
+
+   $ casq orphans --long
+   Hash: abc123def456...
+   Type: tree
+   Entries: 15
+   Approx size: 1024 bytes
+   ---
+   ```
+
+2. **Operation Journal** - Automatically tracks `add` operations:
+   - Records timestamp, hash, original path, and metadata for each `add`
+   - Stored in `$STORE_ROOT/journal` as append-only text file
+   - Use `casq journal --orphans` to find orphaned entries with context
+
+   ```bash
+   $ casq journal --recent 10
+   2026-01-22 14:30:52  add  abc123def...  /important/data  entries=15,size=1024
+
+   $ casq journal --orphans
+   2026-01-22 14:30:52  add  abc123def...  /important/data  entries=15,size=1024
+   ```
+
+**Workflow:**
+```bash
+# User adds path but forgets to create ref
+$ casq add /important/data
+abc123def...  /important/data
+
+# Later: discover orphans with context
+$ casq journal --orphans
+2026-01-22 14:30:52  add  abc123def...  /important/data  entries=15,size=1024
+
+# Inspect before saving
+$ casq ls abc123def...
+file1.txt
+file2.txt
+subdir/
+
+# Create ref to save it
+$ casq refs add important-data abc123def...
 ```
 
 ### Dependencies

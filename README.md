@@ -176,4 +176,4 @@ This is a Rust workspace with two crates:
 
 ## License
 
-See [LICENSE](LICENSE) file for details.
+> [Apache-2.0](LICENSE)

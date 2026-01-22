@@ -16,6 +16,20 @@ pub struct GcStats {
     pub bytes_freed: u64,
 }
 
+/// Information about an orphaned tree root.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrphanRoot {
+    /// Hash of the orphaned tree.
+    pub hash: Hash,
+    /// Number of entries in the tree.
+    pub entry_count: usize,
+    /// Approximate size in bytes (on-disk size).
+    pub approx_size: u64,
+}
+
+type EntryInfo = (Hash, usize, u64);
+type GcResult = (Vec<EntryInfo>, HashSet<Hash>);
+
 impl Store {
     /// Run garbage collection.
     ///
@@ -30,7 +44,7 @@ impl Store {
     }
 
     /// Mark phase: traverse from all refs and collect reachable objects.
-    fn mark_reachable(&self) -> Result<HashSet<Hash>> {
+    pub(crate) fn mark_reachable(&self) -> Result<HashSet<Hash>> {
         let mut reachable = HashSet::new();
 
         // Get all refs
@@ -135,6 +149,119 @@ impl Store {
         }
 
         Ok(stats)
+    }
+
+    /// Find orphaned tree roots.
+    ///
+    /// Returns a list of unreferenced trees that are not referenced by other
+    /// unreferenced objects. These are "root" trees that were added without refs.
+    pub fn find_orphan_roots(&self) -> Result<Vec<OrphanRoot>> {
+        // Mark phase: collect all reachable objects
+        let reachable = self.mark_reachable()?;
+
+        // Scan unreachable objects
+        let (unreachable_trees, child_refs) = self.scan_unreachable(&reachable)?;
+
+        // Filter for orphan roots (trees not referenced by other unreachable objects)
+        self.filter_orphan_roots(unreachable_trees, &child_refs)
+    }
+
+    /// Scan all objects and identify unreachable trees and their child references.
+    ///
+    /// Returns:
+    /// - Vec of (hash, entry_count, size) for unreachable tree objects
+    /// - HashSet of all hashes referenced by unreachable trees
+    fn scan_unreachable(&self, reachable: &HashSet<Hash>) -> Result<GcResult> {
+        let mut unreachable_trees = Vec::new();
+        let mut child_refs = HashSet::new();
+
+        let objects_dir = self.root().join("objects").join(self.algorithm().as_str());
+        if !objects_dir.exists() {
+            return Ok((unreachable_trees, child_refs));
+        }
+
+        // Walk all shard directories
+        for shard_entry in fs::read_dir(&objects_dir)? {
+            let shard_entry = shard_entry?;
+            let shard_path = shard_entry.path();
+
+            if !shard_path.is_dir() {
+                continue;
+            }
+
+            // Walk all objects in shard
+            for obj_entry in fs::read_dir(&shard_path)? {
+                let obj_entry = obj_entry?;
+                let obj_path = obj_entry.path();
+
+                if !obj_path.is_file() {
+                    continue;
+                }
+
+                // Parse hash from path
+                let prefix = shard_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+                let suffix = obj_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+                let hash_str = format!("{}{}", prefix, suffix);
+                if let Ok(hash) = Hash::from_hex(&hash_str) {
+                    // Skip reachable objects
+                    if reachable.contains(&hash) {
+                        continue;
+                    }
+
+                    // Check if it's a tree
+                    if let Ok(header) = self.read_object_header(&obj_path) {
+                        if header.object_type == ObjectType::Tree {
+                            // Get size
+                            let size = fs::metadata(&obj_path)?.len();
+
+                            // Get tree entries to count them and collect child refs
+                            if let Ok(entries) = self.get_tree(&hash) {
+                                let entry_count = entries.len();
+
+                                // Collect all child hashes from this unreachable tree
+                                for entry in &entries {
+                                    child_refs.insert(entry.hash);
+                                }
+
+                                unreachable_trees.push((hash, entry_count, size));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((unreachable_trees, child_refs))
+    }
+
+    /// Filter unreachable trees to find orphan roots.
+    ///
+    /// An orphan root is an unreachable tree that is NOT referenced by any other
+    /// unreachable tree (i.e., it's a top-level tree that was added without a ref).
+    fn filter_orphan_roots(
+        &self,
+        unreachable_trees: Vec<(Hash, usize, u64)>,
+        child_refs: &HashSet<Hash>,
+    ) -> Result<Vec<OrphanRoot>> {
+        let mut orphan_roots = Vec::new();
+
+        for (hash, entry_count, approx_size) in unreachable_trees {
+            // If this tree is not referenced by any other unreachable tree,
+            // it's an orphan root
+            if !child_refs.contains(&hash) {
+                orphan_roots.push(OrphanRoot {
+                    hash,
+                    entry_count,
+                    approx_size,
+                });
+            }
+        }
+
+        Ok(orphan_roots)
     }
 }
 
@@ -275,5 +402,171 @@ mod tests {
         let stats = store.gc(false).unwrap();
         assert_eq!(stats.objects_deleted, 1);
         assert!(!store.object_path(&hash).exists());
+    }
+
+    #[test]
+    fn test_find_orphans_empty_store() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 0);
+    }
+
+    #[test]
+    fn test_find_orphans_unreferenced_tree() {
+        use crate::tree::{EntryType, TreeEntry, file_modes};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create a blob
+        let blob = store.put_blob(b"file content".as_ref()).unwrap();
+
+        // Create a tree without referencing it
+        let entries = vec![
+            TreeEntry::new(
+                EntryType::Blob,
+                file_modes::REGULAR,
+                blob,
+                "file.txt".to_string(),
+            )
+            .unwrap(),
+        ];
+        let tree_hash = store.put_tree(entries).unwrap();
+
+        // Should find the orphaned tree
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 1);
+        assert_eq!(orphans[0].hash, tree_hash);
+        assert_eq!(orphans[0].entry_count, 1);
+        assert!(orphans[0].approx_size > 0);
+    }
+
+    #[test]
+    fn test_find_orphans_referenced_tree() {
+        use crate::tree::{EntryType, TreeEntry, file_modes};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create a blob
+        let blob = store.put_blob(b"file content".as_ref()).unwrap();
+
+        // Create a tree and reference it
+        let entries = vec![
+            TreeEntry::new(
+                EntryType::Blob,
+                file_modes::REGULAR,
+                blob,
+                "file.txt".to_string(),
+            )
+            .unwrap(),
+        ];
+        let tree_hash = store.put_tree(entries).unwrap();
+        store.refs().add("mytree", &tree_hash).unwrap();
+
+        // Should NOT find any orphans (tree is referenced)
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 0);
+    }
+
+    #[test]
+    fn test_find_orphans_nested_unreferenced_trees() {
+        use crate::tree::{EntryType, TreeEntry, file_modes};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create a blob
+        let blob = store.put_blob(b"nested file".as_ref()).unwrap();
+
+        // Create a subtree
+        let subtree_entries = vec![
+            TreeEntry::new(
+                EntryType::Blob,
+                file_modes::REGULAR,
+                blob,
+                "nested.txt".to_string(),
+            )
+            .unwrap(),
+        ];
+        let subtree_hash = store.put_tree(subtree_entries).unwrap();
+
+        // Create a parent tree referencing the subtree
+        let parent_entries = vec![
+            TreeEntry::new(
+                EntryType::Tree,
+                file_modes::DIRECTORY,
+                subtree_hash,
+                "subdir".to_string(),
+            )
+            .unwrap(),
+        ];
+        let parent_hash = store.put_tree(parent_entries).unwrap();
+
+        // Neither tree is referenced, but subtree is referenced by parent
+        // So only parent should be an orphan root
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 1);
+        assert_eq!(orphans[0].hash, parent_hash);
+    }
+
+    #[test]
+    fn test_find_orphans_blobs_not_reported() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create orphaned blobs
+        store.put_blob(b"orphan1".as_ref()).unwrap();
+        store.put_blob(b"orphan2".as_ref()).unwrap();
+
+        // Should find no orphans (only trees are reported)
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 0);
+    }
+
+    #[test]
+    fn test_find_orphans_multiple_orphan_roots() {
+        use crate::tree::{EntryType, TreeEntry, file_modes};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create first orphan tree
+        let blob1 = store.put_blob(b"file1".as_ref()).unwrap();
+        let tree1 = store
+            .put_tree(vec![
+                TreeEntry::new(
+                    EntryType::Blob,
+                    file_modes::REGULAR,
+                    blob1,
+                    "file1.txt".to_string(),
+                )
+                .unwrap(),
+            ])
+            .unwrap();
+
+        // Create second orphan tree
+        let blob2 = store.put_blob(b"file2".as_ref()).unwrap();
+        let tree2 = store
+            .put_tree(vec![
+                TreeEntry::new(
+                    EntryType::Blob,
+                    file_modes::REGULAR,
+                    blob2,
+                    "file2.txt".to_string(),
+                )
+                .unwrap(),
+            ])
+            .unwrap();
+
+        // Should find both orphan roots
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 2);
+
+        let orphan_hashes: Vec<_> = orphans.iter().map(|o| o.hash).collect();
+        assert!(orphan_hashes.contains(&tree1));
+        assert!(orphan_hashes.contains(&tree2));
     }
 }

@@ -2,6 +2,7 @@
 
 use crate::error::{Error, Result};
 use crate::hash::{Algorithm, Hash};
+use crate::journal::Journal;
 use crate::object::{HEADER_SIZE, ObjectHeader, ObjectType};
 use crate::refs::RefManager;
 use std::fs;
@@ -13,6 +14,7 @@ use std::path::{Path, PathBuf};
 pub struct Store {
     root: PathBuf,
     algorithm: Algorithm,
+    journal: Journal,
 }
 
 impl Store {
@@ -22,6 +24,7 @@ impl Store {
     /// - `objects/blake3/` for storing objects
     /// - `refs/` for named references
     /// - `config` file with version and algorithm
+    /// - `journal` file for operation tracking
     pub fn init<P: AsRef<Path>>(root: P, algorithm: Algorithm) -> Result<Self> {
         let root = root.as_ref().to_path_buf();
 
@@ -41,7 +44,15 @@ impl Store {
         let config_content = format!("version=1\nalgo={}\n", algorithm.as_str());
         fs::write(&config_path, config_content)?;
 
-        Ok(Self { root, algorithm })
+        // Open journal
+        let journal_path = root.join("journal");
+        let journal = Journal::open(&journal_path)?;
+
+        Ok(Self {
+            root,
+            algorithm,
+            journal,
+        })
     }
 
     /// Open an existing store at the given path.
@@ -78,7 +89,15 @@ impl Store {
             return Err(Error::invalid_store(&root, "refs directory missing"));
         }
 
-        Ok(Self { root, algorithm })
+        // Open journal (creates if doesn't exist)
+        let journal_path = root.join("journal");
+        let journal = Journal::open(&journal_path)?;
+
+        Ok(Self {
+            root,
+            algorithm,
+            journal,
+        })
     }
 
     /// Parse the config file to extract the algorithm.
@@ -138,6 +157,23 @@ impl Store {
     /// Get the reference manager for this store.
     pub fn refs(&self) -> RefManager<'_> {
         RefManager::new(self)
+    }
+
+    /// Get a reference to the journal.
+    pub fn journal(&self) -> &Journal {
+        &self.journal
+    }
+
+    /// Find journal entries for orphaned objects.
+    ///
+    /// Uses the GC mark phase to identify reachable objects, then returns
+    /// journal entries whose hashes are not reachable.
+    pub fn find_orphan_journal_entries(&self) -> Result<Vec<crate::journal::JournalEntry>> {
+        // Mark phase: collect all reachable objects
+        let reachable = self.mark_reachable()?;
+
+        // Find orphaned entries in journal
+        self.journal.find_orphans(&reachable)
     }
 
     /// Read an object header from a file.
@@ -908,5 +944,94 @@ mod tests {
         let mut output = Vec::new();
         store.cat_blob(&hash, &mut output).unwrap();
         assert_eq!(output, data);
+    }
+
+    #[test]
+    fn test_journal_records_add_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        // Create a test file
+        let test_file = temp_dir.path().join("test.txt");
+        fs::write(&test_file, b"test content").unwrap();
+
+        // Add the file
+        let hash = store.add_path(&test_file).unwrap();
+
+        // Verify journal entry was created
+        let entries = store.journal().read_recent(10).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].hash, hash);
+        assert_eq!(entries[0].operation, "add");
+        assert!(entries[0].path.contains("test.txt"));
+    }
+
+    #[test]
+    fn test_journal_find_orphans() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        // Create and add first directory
+        let dir1 = temp_dir.path().join("dir1");
+        fs::create_dir(&dir1).unwrap();
+        fs::write(dir1.join("file1.txt"), b"content1").unwrap();
+        let hash1 = store.add_path(&dir1).unwrap();
+
+        // Create and add second directory
+        let dir2 = temp_dir.path().join("dir2");
+        fs::create_dir(&dir2).unwrap();
+        fs::write(dir2.join("file2.txt"), b"content2").unwrap();
+        let hash2 = store.add_path(&dir2).unwrap();
+
+        // Reference only the first one
+        store.refs().add("saved", &hash1).unwrap();
+
+        // Find orphaned journal entries
+        let orphaned = store.find_orphan_journal_entries().unwrap();
+
+        // Should find only the second directory
+        assert_eq!(orphaned.len(), 1);
+        assert_eq!(orphaned[0].hash, hash2);
+    }
+
+    #[test]
+    fn test_orphan_discovery_integration() {
+        use crate::tree::{EntryType, TreeEntry, file_modes};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create an orphaned tree manually (without add_path)
+        let blob = store.put_blob(b"orphan content".as_ref()).unwrap();
+        let entries = vec![
+            TreeEntry::new(
+                EntryType::Blob,
+                file_modes::REGULAR,
+                blob,
+                "orphan.txt".to_string(),
+            )
+            .unwrap(),
+        ];
+        let orphan_hash = store.put_tree(entries).unwrap();
+
+        // Create a referenced tree
+        let blob2 = store.put_blob(b"saved content".as_ref()).unwrap();
+        let entries2 = vec![
+            TreeEntry::new(
+                EntryType::Blob,
+                file_modes::REGULAR,
+                blob2,
+                "saved.txt".to_string(),
+            )
+            .unwrap(),
+        ];
+        let saved_hash = store.put_tree(entries2).unwrap();
+        store.refs().add("saved", &saved_hash).unwrap();
+
+        // Find orphans
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 1);
+        assert_eq!(orphans[0].hash, orphan_hash);
+        assert_eq!(orphans[0].entry_count, 1);
     }
 }

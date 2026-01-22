@@ -43,6 +43,7 @@
 mod error;
 mod gc;
 mod hash;
+mod journal;
 mod object;
 mod refs;
 mod store;
@@ -50,8 +51,9 @@ mod tree;
 mod walk;
 
 pub use error::{Error, Result};
-pub use gc::GcStats;
+pub use gc::{GcStats, OrphanRoot};
 pub use hash::{Algorithm, Hash};
+pub use journal::{Journal, JournalEntry};
 pub use object::{ObjectHeader, ObjectType};
 pub use refs::RefManager;
 pub use store::Store;

@@ -502,10 +502,10 @@ cargo clippy -p casq
 
 ## License
 
-See the workspace LICENSE file.
+> Apache-2.0
 
 ## See Also
 
-- **casq_core** - The library powering this CLI
+- [**casq_core**](https://crates.io/crates/casq_core) - The library powering this CLI
 - **NOTES.md** - Design and specification
 - **CLAUDE.md** - Development guidelines
