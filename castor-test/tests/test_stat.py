@@ -1,9 +1,7 @@
 """Tests for 'castor stat' command."""
 
 import pytest
-from pathlib import Path
 from fixtures import sample_files
-from helpers.verification import get_object_type
 
 
 @pytest.mark.smoke

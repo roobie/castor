@@ -1,7 +1,5 @@
 """Tests for hash determinism and stability."""
 
-import pytest
-from pathlib import Path
 from fixtures import sample_files
 
 

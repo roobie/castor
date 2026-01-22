@@ -2,10 +2,10 @@
 
 import struct
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple
+from typing import List, Dict
 
 
-def verify_store_structure(store_path: Path, algo: str = "blake3") -> bool:
+def verify_store_structure(store_path: Path, algo: str = "blake3-256") -> bool:
     """
     Verify the basic structure of a Castor store.
 
@@ -36,7 +36,7 @@ def verify_store_structure(store_path: Path, algo: str = "blake3") -> bool:
     return True
 
 
-def get_object_path(store_path: Path, hash_str: str, algo: str = "blake3") -> Path:
+def get_object_path(store_path: Path, hash_str: str, algo: str = "blake3-256") -> Path:
     """
     Get the filesystem path for an object given its hash.
 
@@ -56,7 +56,7 @@ def get_object_path(store_path: Path, hash_str: str, algo: str = "blake3") -> Pa
     return store_path / "objects" / algo / prefix / rest
 
 
-def verify_object_exists(store_path: Path, hash_str: str, algo: str = "blake3") -> bool:
+def verify_object_exists(store_path: Path, hash_str: str, algo: str = "blake3-256") -> bool:
     """
     Verify that an object exists in the store.
 
@@ -77,7 +77,7 @@ def verify_object_exists(store_path: Path, hash_str: str, algo: str = "blake3") 
     return True
 
 
-def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3") -> Dict:
+def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3-256") -> Dict:
     """
     Read and parse the header of an object file.
 
@@ -100,7 +100,7 @@ def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3") ->
         version = header_bytes[4]
         obj_type = header_bytes[5]
         algo_id = header_bytes[6]
-        reserved = header_bytes[7]
+        header_bytes[7]
         payload_len = struct.unpack("<Q", header_bytes[8:16])[0]
 
         return {
@@ -112,7 +112,7 @@ def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3") ->
         }
 
 
-def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3") -> str:
+def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3-256") -> str:
     """
     Get the type of an object (blob or tree).
 
@@ -135,7 +135,7 @@ def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3") -> st
         raise ValueError(f"Unknown object type: {type_id}")
 
 
-def read_blob_content(store_path: Path, hash_str: str, algo: str = "blake3") -> bytes:
+def read_blob_content(store_path: Path, hash_str: str, algo: str = "blake3-256") -> bytes:
     """
     Read the content of a blob object.
 
@@ -156,7 +156,7 @@ def read_blob_content(store_path: Path, hash_str: str, algo: str = "blake3") -> 
 
 
 def parse_tree_entries(
-    store_path: Path, tree_hash: str, algo: str = "blake3"
+    store_path: Path, tree_hash: str, algo: str = "blake3-256"
 ) -> List[Dict]:
     """
     Parse the entries of a tree object.
@@ -198,7 +198,7 @@ def parse_tree_entries(
     return entries
 
 
-def count_objects(store_path: Path, algo: str = "blake3") -> int:
+def count_objects(store_path: Path, algo: str = "blake3-256") -> int:
     """
     Count the total number of objects in the store.
 

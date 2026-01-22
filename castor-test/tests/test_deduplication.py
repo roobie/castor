@@ -1,7 +1,5 @@
 """Tests for content deduplication."""
 
-import pytest
-from pathlib import Path
 from fixtures import sample_files
 from helpers.verification import count_objects, verify_object_exists
 
@@ -70,10 +68,10 @@ def test_same_subdirectories_in_different_trees(cli, initialized_store, workspac
 
     initial_count = count_objects(initialized_store)
 
-    hash1 = cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
+    cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
     count_after_tree1 = count_objects(initialized_store)
 
-    hash2 = cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
+    cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
     count_after_tree2 = count_objects(initialized_store)
 
     # Should have added fewer objects due to shared subdirectory
@@ -134,7 +132,7 @@ def test_dedupe_across_multiple_adds(cli, initialized_store, workspace):
     })
 
     hash1 = cli.add(dir1, root=initialized_store).stdout.strip().split()[0]
-    count1 = count_objects(initialized_store)
+    count_objects(initialized_store)
 
     # Second batch with same content
     dir2 = sample_files.create_directory_tree(workspace / "batch2", {
@@ -143,7 +141,7 @@ def test_dedupe_across_multiple_adds(cli, initialized_store, workspace):
     })
 
     hash2 = cli.add(dir2, root=initialized_store).stdout.strip().split()[0]
-    count2 = count_objects(initialized_store)
+    count_objects(initialized_store)
 
     # Should have deduplicated the shared content blob
     # Each tree has 2 files with identical content
@@ -161,7 +159,7 @@ def test_partial_deduplication_in_snapshot(cli, initialized_store, workspace):
         "removed.txt": "Will be removed",
     })
 
-    hash_v1 = cli.add(v1, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
+    cli.add(v1, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
     count_v1 = count_objects(initialized_store)
 
     # Snapshot 2 (some files same, some different)
@@ -171,7 +169,7 @@ def test_partial_deduplication_in_snapshot(cli, initialized_store, workspace):
         "added.txt": "New file",  # New file
     })
 
-    hash_v2 = cli.add(v2, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
+    cli.add(v2, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
     count_v2 = count_objects(initialized_store)
 
     # Should have added: v2 tree + changed.txt blob + added.txt blob

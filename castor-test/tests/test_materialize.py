@@ -2,9 +2,7 @@
 
 import pytest
 import stat
-from pathlib import Path
 from fixtures import sample_files
-from helpers.verification import get_object_type
 
 
 @pytest.mark.smoke
@@ -260,7 +258,7 @@ def test_materialize_binary_file(cli, initialized_store, workspace):
 
 def test_materialize_file_with_unicode_name(cli, initialized_store, workspace):
     """Test materializing file with unicode name."""
-    unicode_file = sample_files.create_sample_file(
+    sample_files.create_sample_file(
         workspace / "café_☕.txt",
         "Unicode test"
     )
@@ -444,7 +442,7 @@ def test_materialize_provides_feedback(cli, initialized_store, workspace, sample
 
 def test_materialize_file_with_special_characters(cli, initialized_store, workspace):
     """Test materializing file with special characters in name."""
-    special_file = sample_files.create_sample_file(
+    sample_files.create_sample_file(
         workspace / "file-name_with.special$chars.txt",
         "special chars test"
     )

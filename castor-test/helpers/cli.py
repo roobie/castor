@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from typing import Optional, List, Union
+from typing import Optional, Union
 
 
 class CastorCLI:

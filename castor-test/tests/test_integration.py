@@ -1,7 +1,6 @@
 """Integration tests for multi-command workflows."""
 
 import pytest
-from pathlib import Path
 from fixtures import sample_files
 from helpers.verification import verify_object_exists, count_objects, list_all_refs
 
@@ -55,7 +54,7 @@ def test_multiple_snapshots_with_deduplication(cli, initialized_store, workspace
         "shared.txt": "shared content",
         "v1-only.txt": "version 1 file",
     })
-    hash_v1 = cli.add(v1_dir, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
+    cli.add(v1_dir, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
@@ -64,7 +63,7 @@ def test_multiple_snapshots_with_deduplication(cli, initialized_store, workspace
         "shared.txt": "shared content",  # Same content - should dedupe
         "v2-only.txt": "version 2 file",
     })
-    hash_v2 = cli.add(v2_dir, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
+    cli.add(v2_dir, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
 
     final_count = count_objects(initialized_store)
 
@@ -363,7 +362,7 @@ def test_mixed_operations_consistency(cli, initialized_store, workspace):
     file2 = sample_files.create_sample_file(workspace / "f2.txt", "file 2")
 
     hash1 = cli.add(file1, root=initialized_store, ref_name="ref1").stdout.strip().split()[0]
-    hash2 = cli.add(file2, root=initialized_store, ref_name="ref2").stdout.strip().split()[0]
+    cli.add(file2, root=initialized_store, ref_name="ref2").stdout.strip().split()[0]
 
     # Cat, ls, stat should all work
     cat1 = cli.cat(hash1, root=initialized_store)
@@ -419,7 +418,7 @@ def test_binary_files_workflow(cli, initialized_store, workspace):
 
     # Add
     hash1 = cli.add(binary1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(binary2, root=initialized_store).stdout.strip().split()[0]
+    cli.add(binary2, root=initialized_store).stdout.strip().split()[0]
 
     # Cat
     cat1 = cli.cat(hash1, root=initialized_store)

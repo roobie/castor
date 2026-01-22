@@ -1,9 +1,8 @@
 """Tests for 'castor gc' command."""
 
 import pytest
-from pathlib import Path
 from fixtures import sample_files
-from helpers.verification import count_objects, verify_object_exists, list_all_refs
+from helpers.verification import count_objects, verify_object_exists
 
 
 @pytest.mark.smoke
@@ -155,7 +154,7 @@ def test_gc_complex_tree_reachability(cli, initialized_store, nested_tree):
     """Test GC correctly traces through nested tree structures."""
     # Add nested tree with ref
     add_result = cli.add(nested_tree, root=initialized_store, ref_name="nested")
-    tree_hash = add_result.stdout.strip().split()[0]
+    add_result.stdout.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
@@ -223,8 +222,8 @@ def test_gc_with_shared_subtrees(cli, initialized_store, workspace):
         "unique2.txt": "unique to tree2",
     })
 
-    hash1 = cli.add(tree1, root=initialized_store, ref_name="tree1").stdout.strip().split()[0]
-    hash2 = cli.add(tree2, root=initialized_store, ref_name="tree2").stdout.strip().split()[0]
+    cli.add(tree1, root=initialized_store, ref_name="tree1").stdout.strip().split()[0]
+    cli.add(tree2, root=initialized_store, ref_name="tree2").stdout.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 

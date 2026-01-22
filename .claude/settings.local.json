@@ -15,7 +15,9 @@
       "mcp__serena__get_symbols_overview",
       "Bash(/workspace/target/debug/castor refs add:*)",
       "Bash(/workspace/target/debug/castor refs rm:*)",
-      "Bash(/workspace/target/debug/castor stat:*)"
+      "Bash(/workspace/target/debug/castor stat:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run pytest:*)"
     ]
   }
 }

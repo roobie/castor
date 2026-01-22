@@ -1,6 +1,5 @@
 """Sample file and directory generators for tests."""
 
-import os
 import stat
 from pathlib import Path
 from typing import Dict, Any, Union

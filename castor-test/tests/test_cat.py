@@ -1,7 +1,6 @@
 """Tests for 'castor cat' command."""
 
 import pytest
-from pathlib import Path
 from fixtures import sample_files
 from helpers.verification import get_object_type
 

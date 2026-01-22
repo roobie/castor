@@ -352,7 +352,7 @@ def test_add_preserves_directory_mode(cli, initialized_store, workspace):
 
 def test_add_file_mode_preserved(cli, initialized_store, workspace):
     """Test that file mode is preserved in tree entry."""
-    exe_file = sample_files.create_file_with_mode(
+    sample_files.create_file_with_mode(
         workspace / "executable",
         "#!/bin/bash\n",
         0o755

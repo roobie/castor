@@ -1,7 +1,6 @@
 """Tests for 'castor refs' subcommands."""
 
 import pytest
-from pathlib import Path
 from fixtures import sample_files
 from helpers.verification import list_all_refs
 
@@ -45,7 +44,7 @@ def test_refs_add_invalid_hash_format(cli, initialized_store):
 def test_refs_add_nonexistent_hash(cli, initialized_store):
     """Test refs add with non-existent hash."""
     fake_hash = "0" * 64
-    result = cli.refs_add("myref", fake_hash, root=initialized_store, expect_success=False)
+    cli.refs_add("myref", fake_hash, root=initialized_store, expect_success=False)
 
     # May succeed (ref is just a pointer) or fail (validation)
     # Either is acceptable behavior
@@ -66,7 +65,7 @@ def test_refs_add_invalid_name_with_slash(cli, initialized_store, sample_file):
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
 
-    result = cli.refs_add("invalid/name", file_hash, root=initialized_store, expect_success=False)
+    cli.refs_add("invalid/name", file_hash, root=initialized_store, expect_success=False)
 
     # May fail or may create subdirectory - depends on implementation
     # At minimum, should not allow directory traversal

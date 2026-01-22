@@ -1,8 +1,6 @@
 """Edge case tests for unusual scenarios."""
 
 import pytest
-import os
-from pathlib import Path
 from fixtures import sample_files
 from helpers.verification import count_objects
 

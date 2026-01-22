@@ -12,7 +12,7 @@ def test_init_default(cli, castor_store):
     result = cli.init(root=castor_store)
 
     assert result.returncode == 0
-    verify_store_structure(castor_store, algo="blake3")
+    verify_store_structure(castor_store)
 
 
 def test_init_creates_config_file(cli, castor_store):
@@ -31,7 +31,7 @@ def test_init_creates_objects_directory(cli, castor_store):
     """Test that init creates the objects directory structure."""
     cli.init(root=castor_store)
 
-    objects_dir = castor_store / "objects" / "blake3"
+    objects_dir = castor_store / "objects" / "blake3-256"
     assert objects_dir.exists()
     assert objects_dir.is_dir()
 
@@ -73,7 +73,7 @@ def test_init_with_blake3_algo(cli, castor_store):
     result = cli.init(root=castor_store, algo="blake3")
 
     assert result.returncode == 0
-    verify_store_structure(castor_store, algo="blake3")
+    verify_store_structure(castor_store)
 
 
 def test_init_with_unsupported_algo(cli, castor_store):
@@ -161,7 +161,7 @@ def test_init_config_contains_algo(cli, castor_store):
     config_file = castor_store / "config"
     content = config_file.read_text()
 
-    # Config should mention the algorithm
+    # Config should mention the algorithm (blake3 or blake3-256)
     assert "blake3" in content.lower()
 
 
@@ -180,7 +180,7 @@ def test_init_creates_subdirectories_with_correct_permissions(cli, castor_store)
     """Test that created directories have reasonable permissions."""
     cli.init(root=castor_store)
 
-    objects_dir = castor_store / "objects" / "blake3"
+    objects_dir = castor_store / "objects" / "blake3-256"
     refs_dir = castor_store / "refs"
 
     # Directories should be readable/writable/executable by owner

@@ -1,9 +1,7 @@
 """Tests for 'castor ls' command."""
 
 import pytest
-from pathlib import Path
 from fixtures import sample_files
-from helpers.verification import parse_tree_entries, get_object_type
 
 
 @pytest.mark.smoke
@@ -167,7 +165,7 @@ def test_ls_tree_entries_sorted(cli, initialized_store, workspace):
     result = cli.ls(tree_hash, root=initialized_store)
 
     # Output should show sorted names
-    output_lines = result.stdout.strip().split('\n')
+    result.stdout.strip().split('\n')
     # Extract names (handling various output formats)
     assert "alpha.txt" in result.stdout
     assert "middle.txt" in result.stdout
@@ -218,7 +216,7 @@ def test_ls_tree_with_subdirectories(cli, initialized_store, complex_tree):
 
 def test_ls_shows_mode_in_long_format(cli, initialized_store, workspace):
     """Test that long format shows file mode."""
-    exe_file = sample_files.create_executable_file(
+    sample_files.create_executable_file(
         workspace / "script.sh",
         "#!/bin/bash\n"
     )
