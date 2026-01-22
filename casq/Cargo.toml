@@ -3,10 +3,10 @@ name = "casq"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-license-file.workspace = true
 description = "A minimal content-addressed file store using BLAKE3. (CLI)"
 repository.workspace = true
 keywords.workspace = true
+license = "Apache-2.0"
 readme = "README.md"
 
 [dependencies]

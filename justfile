@@ -36,4 +36,9 @@ test: build
 install: test
 	cargo install --path ./casq
 
+publish:
+	# cargo login
+	cargo publish --workspace
+
 all: build test install
+
