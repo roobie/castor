@@ -11,6 +11,7 @@
 - **Transparent compression** - 3-5x storage reduction with zstd (files ≥ 4KB automatically compressed)
 - **Content-defined chunking** - Incremental backups with FastCDC (files ≥ 1MB split into variable chunks)
 - **Content addressing** - Files identified by cryptographic hash, not by path
+- **Stdin support** - Pipe data directly from commands (e.g., `curl | casq add -`)
 - **Garbage collection** - Reclaim space from unreferenced objects with mark & sweep
 - **Simple & fast** - No databases, no network, just files on disk with BLAKE3 hashing
 - **Embeddable** - Rust library (`casq_core`) + CLI binary, easily integrated into your tools
@@ -23,6 +24,10 @@ casq init
 
 # Add files and directories (automatically deduplicated)
 casq add myproject/ --ref-name snapshot-2024-01-21
+
+# Add content from stdin (pipe data directly)
+curl https://example.org | casq add --ref-name example-dot-org@20260123 -
+echo "quick note" | casq add --ref-name note-123 -
 
 # List what you have
 casq ls

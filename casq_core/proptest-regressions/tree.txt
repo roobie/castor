@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 03a4f45e278ad1efef1ce9954e206d253445e39d966f71dc2744d5168815ed44 # shrinks to prefix = "", suffix = ""
+cc a4ac3eb6e71acfa2ba57bac41ae225090ff7b406caf46a6a581bc849d406ad11 # shrinks to entries = [TreeEntry { entry_type: Blob, mode: 0, hash: Hash(0000000000000000000000000000000000000000000000000000000000000000), name: "_" }, TreeEntry { entry_type: Blob, mode: 0, hash: Hash(0000000000000000000000000000000000000000000000000000000000000001), name: "_" }]

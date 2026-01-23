@@ -239,6 +239,7 @@ $STORE_ROOT/
 ```bash
 casq init [--root PATH] [--algo blake3]
 casq add PATH... [--ref-name NAME]
+casq add - [--ref-name NAME]  # Read from stdin (use "-" as path)
 casq materialize HASH DEST
 casq cat HASH          # Output blob to stdout
 casq ls HASH [--long]  # List tree contents or show blob info

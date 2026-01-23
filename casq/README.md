@@ -31,6 +31,10 @@ casq init
 casq add myfile.txt
 casq add mydir/
 
+# Add content from stdin (pipe data directly)
+curl https://example.org | casq add --ref-name example-dot-org@20260123 -
+echo "quick note" | casq add --ref-name note-123 -
+
 # Add with a named reference
 casq add important-data/ --ref-name backup-2024
 
@@ -70,15 +74,17 @@ Options:
 
 Creates the store directory structure at the configured root (default: `./casq-store`).
 
-### `casq add <PATH>...`
+### `casq add <PATH>...` or `casq add -`
 
-Add files or directories to the store.
+Add files, directories, or stdin content to the store.
 
 ```bash
 casq add <PATH>... [--ref-name <NAME>]
+casq add - [--ref-name <NAME>]
 
 Arguments:
   <PATH>...  One or more paths to add
+  -          Read content from stdin (cannot mix with filesystem paths)
 
 Options:
   --ref-name <NAME>  Create a named reference to the added content
@@ -95,9 +101,19 @@ casq add file1.txt file2.txt dir/
 
 # Add with a reference
 casq add project/ --ref-name release-v1.0
+
+# Add from stdin
+echo "Hello, World!" | casq add -
+curl https://api.example.com/data | casq add --ref-name api-snapshot -
+cat large-file.bin | casq add --ref-name binary-data -
 ```
 
-The command outputs the hash of each added object. Directories are added recursively and stored as tree objects.
+The command outputs the hash of each added object. Directories are added recursively and stored as tree objects. Stdin content is stored as a blob.
+
+**Important notes:**
+- When using stdin (`-`), you cannot mix it with filesystem paths
+- Stdin can only be specified once per invocation
+- Output format for stdin: `<hash> (stdin)`
 
 ### `casq materialize <HASH> <DEST>`
 
