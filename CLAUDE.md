@@ -119,7 +119,7 @@ This is a **Rust workspace** with two crates:
 - `casq_core/`: Core library implementing the storage engine, hashing, compression, chunking, and object management
 - `casq/`: CLI binary that provides the user interface
 
-**Status:** Production-ready with comprehensive test coverage (92 unit tests, 248+ integration tests).
+**Status:** Production-ready with comprehensive test coverage (120 unit tests, 266 integration tests).
 
 ## Build and Development Commands
 
@@ -309,6 +309,49 @@ subdir/
 $ casq refs add important-data abc123def...
 ```
 
+### Stdin Support
+
+**casq** supports reading content directly from stdin using the `-` argument:
+
+```bash
+# Pipe curl output
+curl https://example.org | casq add --ref-name example-dot-org@20260123 -
+
+# Pipe echo output
+echo "quick note" | casq add --ref-name note-123 -
+
+# Pipe any command
+cat large-file.bin | casq add -
+```
+
+**Features:**
+- Stdin content is stored as a blob (automatically compressed/chunked based on size)
+- Output format: `<hash> (stdin)`
+- Journal entries use `"(stdin)"` as the path
+- Cannot mix stdin with filesystem paths in the same command
+- Stdin can only be specified once per invocation
+
+**Error handling:**
+- TTY detection prevents accidental stdin usage without pipe
+- Clear error messages for invalid usage patterns
+
+**Examples:**
+
+```bash
+# Basic stdin
+$ echo "Hello World" | casq add -
+af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262 (stdin)
+
+# With reference
+$ curl https://api.example.com/data | casq add --ref-name api-snapshot -
+abc123... (stdin)
+Created reference: api-snapshot -> abc123...
+
+# Journal entry
+$ casq journal --recent 1
+2026-01-23 10:30:00  add  abc123...  (stdin)  entries=1,size=512
+```
+
 ### Dependencies
 
 **casq_core:**
@@ -324,6 +367,7 @@ $ casq refs add important-data abc123def...
 - `casq_core`: The core library
 - `clap`: CLI argument parsing with derive macros
 - `anyhow`: Error handling in main
+- `atty`: TTY detection for stdin validation
 
 ## Design Principles
 

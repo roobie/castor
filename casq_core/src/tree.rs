@@ -329,6 +329,18 @@ mod tests {
                 TreeEntry::new(entry_type, mode, Hash::from_bytes(hash_bytes), name).unwrap()
             })
     }
+    use proptest::collection;
+    use std::collections::HashSet;
+
+    fn arb_tree_entries_unique() -> impl Strategy<Value = Vec<TreeEntry>> {
+        collection::vec(arb_tree_entry(), 1..20).prop_filter(
+            "entry names must be unique",
+            |entries| {
+                let mut seen = HashSet::new();
+                entries.iter().all(|e| seen.insert(e.name.clone()))
+            },
+        )
+    }
 
     proptest! {
         #![proptest_config(ProptestConfig {
@@ -349,7 +361,7 @@ mod tests {
         /// Property 11: Tree canonicalization - order-independent hashing
         #[test]
         fn prop_tree_canonicalization_order_independent(
-            entries in prop::collection::vec(arb_tree_entry(), 1..20)
+            entries in arb_tree_entries_unique()
         ) {
             // Hash of sorted entries
             let mut sorted1 = entries.clone();

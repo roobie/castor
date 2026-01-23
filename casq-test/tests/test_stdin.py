@@ -1,10 +1,7 @@
 """Integration tests for stdin support in casq add command."""
 
-import pytest
 import json
-from pathlib import Path
 from fixtures import sample_files
-from helpers.verification import verify_object_exists, get_object_type
 
 
 def test_stdin_basic(cli, initialized_store):
