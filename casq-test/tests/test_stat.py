@@ -4,7 +4,7 @@ import pytest
 from fixtures import sample_files
 from helpers.verification import (
     verify_object_exists,
-    )
+)
 
 
 @pytest.mark.smoke

@@ -17,6 +17,7 @@ fmt:
 lint:
 	cargo fmt --all -- --check
 	cargo clippy --all -- -D warnings
+	just -f ./casq-test/justfile lint
 
 lint-fix:
 	cargo clippy --all --fix
