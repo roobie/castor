@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,3 +25,24 @@ jobs:
         echo "Running property tests with proptest..."
         cargo test --lib prop --verbose
         echo "Property tests completed"
+
+    # Python / uv / pytest
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    # If your uv project needs sync before running tests
+    - name: Sync Python dependencies (uv)
+      working-directory: casq-test
+      run: uv sync
+
+    - name: Run Python tests (pytest via uv)
+      working-directory: casq-test
+      run: uv run pytest
