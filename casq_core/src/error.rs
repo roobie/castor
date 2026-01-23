@@ -62,6 +62,18 @@ pub enum Error {
     /// Unsupported algorithm.
     #[error("Unsupported algorithm: {algorithm}")]
     UnsupportedAlgorithm { algorithm: String },
+
+    /// Compression error.
+    #[error("Compression error: {reason}")]
+    CompressionError { reason: String },
+
+    /// Invalid chunk list.
+    #[error("Invalid chunk list: {reason}")]
+    InvalidChunkList { reason: String },
+
+    /// Invalid chunk.
+    #[error("Invalid chunk: {reason}")]
+    InvalidChunk { reason: String },
 }
 
 impl Error {
@@ -129,6 +141,27 @@ impl Error {
     pub fn unsupported_algorithm(algorithm: impl Into<String>) -> Self {
         Error::UnsupportedAlgorithm {
             algorithm: algorithm.into(),
+        }
+    }
+
+    /// Create a CompressionError error.
+    pub fn compression_error(reason: impl Into<String>) -> Self {
+        Error::CompressionError {
+            reason: reason.into(),
+        }
+    }
+
+    /// Create an InvalidChunkList error.
+    pub fn invalid_chunk_list(reason: impl Into<String>) -> Self {
+        Error::InvalidChunkList {
+            reason: reason.into(),
+        }
+    }
+
+    /// Create an InvalidChunk error.
+    pub fn invalid_chunk(reason: impl Into<String>) -> Self {
+        Error::InvalidChunk {
+            reason: reason.into(),
         }
     }
 }

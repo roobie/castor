@@ -40,6 +40,7 @@
 //! # }
 //! ```
 
+mod chunking;
 mod error;
 mod gc;
 mod hash;

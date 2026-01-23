@@ -1,13 +1,20 @@
 //! Store management and object I/O.
 
+use crate::chunking::{ChunkerConfig, chunk_file};
 use crate::error::{Error, Result};
 use crate::hash::{Algorithm, Hash};
 use crate::journal::Journal;
-use crate::object::{HEADER_SIZE, ObjectHeader, ObjectType};
+use crate::object::{ChunkList, CompressionType, HEADER_SIZE, ObjectHeader, ObjectType};
 use crate::refs::RefManager;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+
+/// Compression threshold: files >= 4KB are compressed.
+const COMPRESSION_THRESHOLD: usize = 4096;
+
+/// Chunking threshold: files >= 1MB are chunked.
+const CHUNKING_THRESHOLD: usize = 1024 * 1024;
 
 /// A content-addressed store.
 #[derive(Debug)]
@@ -242,11 +249,26 @@ impl Store {
     /// Store a blob from a reader.
     ///
     /// Returns the hash of the stored blob.
+    /// For files >= 1MB, uses content-defined chunking.
+    /// For blobs >= 4KB, applies zstd compression.
     pub fn put_blob<R: Read>(&self, mut reader: R) -> Result<Hash> {
-        // Read payload and compute hash
+        // Read payload
         let mut payload = Vec::new();
         reader.read_to_end(&mut payload)?;
-        let hash = Hash::hash_bytes(&payload);
+
+        // Chunk large files
+        if payload.len() >= CHUNKING_THRESHOLD {
+            return self.put_blob_chunked(&payload);
+        }
+
+        // For smaller files, store as single blob
+        self.put_blob_whole(&payload)
+    }
+
+    /// Store data as a single blob (no chunking).
+    fn put_blob_whole(&self, payload: &[u8]) -> Result<Hash> {
+        // Compute hash of uncompressed data
+        let hash = Hash::hash_bytes(payload);
 
         // Check if object already exists (deduplication)
         let obj_path = self.object_path(&hash);
@@ -254,18 +276,88 @@ impl Store {
             return Ok(hash);
         }
 
+        // Determine if compression should be used
+        let (final_payload, compression) = if payload.len() >= COMPRESSION_THRESHOLD {
+            (compress_zstd(payload)?, CompressionType::Zstd)
+        } else {
+            (payload.to_vec(), CompressionType::None)
+        };
+
         // Create header
-        let header = ObjectHeader::new(ObjectType::Blob, self.algorithm, payload.len() as u64);
+        let header = ObjectHeader::new(
+            ObjectType::Blob,
+            self.algorithm,
+            compression,
+            final_payload.len() as u64,
+        );
 
         // Write object atomically
-        self.write_object_atomic(&hash, &header, &payload)?;
+        self.write_object_atomic(&hash, &header, &final_payload)?;
 
         Ok(hash)
+    }
+
+    /// Store data as chunked blob using content-defined chunking.
+    fn put_blob_chunked(&self, data: &[u8]) -> Result<Hash> {
+        let config = ChunkerConfig::default();
+        let chunks = chunk_file(data, &config)?;
+
+        // Write each chunk as a blob
+        for chunk_entry in &chunks {
+            // Find the chunk data
+            let mut offset = 0;
+            let mut current_chunk_idx = 0;
+            let chunk_data = loop {
+                if current_chunk_idx
+                    == chunks
+                        .iter()
+                        .position(|c| c.hash == chunk_entry.hash)
+                        .unwrap()
+                {
+                    let end = offset + chunk_entry.size as usize;
+                    break &data[offset..end];
+                }
+                offset += chunks[current_chunk_idx].size as usize;
+                current_chunk_idx += 1;
+            };
+
+            // Store chunk as blob (with compression if applicable)
+            self.put_blob_whole(chunk_data)?;
+        }
+
+        // Create ChunkList object
+        let chunk_list = ChunkList {
+            chunks: chunks.clone(),
+        };
+        let chunk_list_payload = chunk_list.encode();
+
+        // Hash is computed from original file data (for stability)
+        let file_hash = Hash::hash_bytes(data);
+
+        // Check if ChunkList already exists
+        let obj_path = self.object_path(&file_hash);
+        if obj_path.exists() {
+            return Ok(file_hash);
+        }
+
+        // Create header for ChunkList (no compression for metadata)
+        let header = ObjectHeader::new(
+            ObjectType::ChunkList,
+            self.algorithm,
+            CompressionType::None,
+            chunk_list_payload.len() as u64,
+        );
+
+        // Write ChunkList object
+        self.write_object_atomic(&file_hash, &header, &chunk_list_payload)?;
+
+        Ok(file_hash)
     }
 
     /// Retrieve a blob by hash.
     ///
     /// Returns the blob content as a Vec<u8>.
+    /// Handles both regular blobs and chunked blobs (ChunkList objects).
     pub fn get_blob(&self, hash: &Hash) -> Result<Vec<u8>> {
         let obj_path = self.object_path(hash);
 
@@ -276,30 +368,104 @@ impl Store {
         // Read and validate header
         let header = self.read_object_header(&obj_path)?;
 
-        if header.object_type != ObjectType::Blob {
-            return Err(Error::invalid_object_type(
-                ObjectType::Blob.as_str(),
+        match header.object_type {
+            ObjectType::Blob => {
+                // Read payload (compressed)
+                let compressed_payload = self.read_object_payload(&obj_path, header.payload_len)?;
+
+                // Decompress if needed
+                let payload = match header.compression {
+                    CompressionType::None => compressed_payload,
+                    CompressionType::Zstd => decompress_zstd(&compressed_payload)?,
+                };
+
+                // Verify hash matches uncompressed data (corruption detection)
+                let computed_hash = Hash::hash_bytes(&payload);
+                if computed_hash != *hash {
+                    return Err(Error::corrupted_object(
+                        &obj_path,
+                        format!(
+                            "Hash mismatch: expected {}, got {}",
+                            hash.to_hex(),
+                            computed_hash.to_hex()
+                        ),
+                    ));
+                }
+
+                Ok(payload)
+            }
+            ObjectType::ChunkList => {
+                // Read ChunkList payload
+                let chunk_list_payload = self.read_object_payload(&obj_path, header.payload_len)?;
+                let chunk_list = ChunkList::decode(&chunk_list_payload)?;
+
+                // Reassemble chunks
+                self.reassemble_chunks(&chunk_list, hash)
+            }
+            _ => Err(Error::invalid_object_type(
+                "Blob or ChunkList",
                 header.object_type.as_str(),
-            ));
+            )),
+        }
+    }
+
+    /// Reassemble chunks into original data.
+    fn reassemble_chunks(&self, chunk_list: &ChunkList, expected_hash: &Hash) -> Result<Vec<u8>> {
+        let mut data = Vec::new();
+
+        for chunk_entry in &chunk_list.chunks {
+            // Get each chunk (this will handle decompression automatically)
+            let chunk_obj_path = self.object_path(&chunk_entry.hash);
+            if !chunk_obj_path.exists() {
+                return Err(Error::invalid_chunk(format!(
+                    "Chunk not found: {}",
+                    chunk_entry.hash.to_hex()
+                )));
+            }
+
+            let chunk_header = self.read_object_header(&chunk_obj_path)?;
+            if chunk_header.object_type != ObjectType::Blob {
+                return Err(Error::invalid_chunk(format!(
+                    "Chunk has wrong type: expected Blob, got {}",
+                    chunk_header.object_type.as_str()
+                )));
+            }
+
+            // Read and decompress chunk
+            let compressed_chunk =
+                self.read_object_payload(&chunk_obj_path, chunk_header.payload_len)?;
+            let chunk_data = match chunk_header.compression {
+                CompressionType::None => compressed_chunk,
+                CompressionType::Zstd => decompress_zstd(&compressed_chunk)?,
+            };
+
+            // Verify chunk hash
+            let computed_chunk_hash = Hash::hash_bytes(&chunk_data);
+            if computed_chunk_hash != chunk_entry.hash {
+                return Err(Error::invalid_chunk(format!(
+                    "Chunk hash mismatch: expected {}, got {}",
+                    chunk_entry.hash.to_hex(),
+                    computed_chunk_hash.to_hex()
+                )));
+            }
+
+            data.extend_from_slice(&chunk_data);
         }
 
-        // Read payload
-        let payload = self.read_object_payload(&obj_path, header.payload_len)?;
-
-        // Verify hash matches (corruption detection)
-        let computed_hash = Hash::hash_bytes(&payload);
-        if computed_hash != *hash {
+        // Verify final hash
+        let computed_hash = Hash::hash_bytes(&data);
+        if computed_hash != *expected_hash {
             return Err(Error::corrupted_object(
-                &obj_path,
+                self.object_path(expected_hash),
                 format!(
-                    "Hash mismatch: expected {}, got {}",
-                    hash.to_hex(),
+                    "Reassembled data hash mismatch: expected {}, got {}",
+                    expected_hash.to_hex(),
                     computed_hash.to_hex()
                 ),
             ));
         }
 
-        Ok(payload)
+        Ok(data)
     }
 
     /// Stream a blob to a writer.
@@ -326,8 +492,13 @@ impl Store {
             return Ok(hash);
         }
 
-        // Create header
-        let header = ObjectHeader::new(ObjectType::Tree, self.algorithm, payload.len() as u64);
+        // Create header (trees are not compressed - they're typically small metadata)
+        let header = ObjectHeader::new(
+            ObjectType::Tree,
+            self.algorithm,
+            CompressionType::None,
+            payload.len() as u64,
+        );
 
         // Write object atomically
         self.write_object_atomic(&hash, &header, &payload)?;
@@ -396,7 +567,7 @@ impl Store {
         let header = self.read_object_header(&obj_path)?;
 
         match header.object_type {
-            ObjectType::Blob => self.materialize_blob(hash, dest),
+            ObjectType::Blob | ObjectType::ChunkList => self.materialize_blob(hash, dest),
             ObjectType::Tree => self.materialize_tree(hash, dest),
         }
     }
@@ -464,6 +635,18 @@ impl Store {
     pub fn cat_blob<W: Write>(&self, hash: &Hash, writer: W) -> Result<()> {
         self.blob_to_writer(hash, writer)
     }
+}
+
+/// Compress data using zstd.
+fn compress_zstd(data: &[u8]) -> Result<Vec<u8>> {
+    zstd::encode_all(data, 3) // Level 3 = fast compression
+        .map_err(|e| Error::compression_error(format!("zstd compression failed: {}", e)))
+}
+
+/// Decompress data using zstd.
+fn decompress_zstd(data: &[u8]) -> Result<Vec<u8>> {
+    zstd::decode_all(data)
+        .map_err(|e| Error::compression_error(format!("zstd decompression failed: {}", e)))
 }
 
 #[cfg(test)]

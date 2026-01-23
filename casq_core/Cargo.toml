@@ -15,3 +15,5 @@ hex = "0.4"                           # Hash hex encoding/decoding
 tempfile = "3.0"                      # Atomic object writes
 ignore = "0.4"                        # Filesystem walking with .gitignore support
 thiserror = "2.0"                     # Error handling
+zstd = "0.13"                         # Compression
+fastcdc = "3.1"                       # Content-defined chunking
