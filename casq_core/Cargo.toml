@@ -17,3 +17,6 @@ ignore = "0.4"                        # Filesystem walking with .gitignore suppo
 thiserror = "2.0"                     # Error handling
 zstd = "0.13"                         # Compression
 fastcdc = "3.1"                       # Content-defined chunking
+
+[dev-dependencies]
+proptest = "1.4"                      # Property-based testing

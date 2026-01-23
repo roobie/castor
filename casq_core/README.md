@@ -118,8 +118,11 @@ casq_core/src/
 # Build the library
 cargo build --release -p casq_core
 
-# Run all tests (92 unit tests + 1 doctest)
+# Run all tests (92 unit tests + 23 property tests + 1 doctest)
 cargo test -p casq_core
+
+# Run only property tests
+cargo test -p casq_core prop
 
 # Run with output
 cargo test -p casq_core -- --nocapture
@@ -201,6 +204,7 @@ let stats = store.gc(dry_run)?;
 
 ```
 ✓ 92 unit tests passing (100% pass rate)
+✓ 23 property tests (generative invariant verification)
 ✓ 1 doctest passing
 ✓ 100% core functionality coverage
 ✓ Edge cases: corruption, empty files/dirs, large files, permissions
@@ -210,6 +214,7 @@ let stats = store.gc(dry_run)?;
 
 ### Test Categories
 
+**Unit Tests:**
 - **Hash operations** - Encoding, decoding, validation
 - **Object encoding** - Headers, payload, v1/v2 compatibility, compression types
 - **Chunking** - FastCDC boundaries, deterministic chunking, small files
@@ -219,6 +224,15 @@ let stats = store.gc(dry_run)?;
 - **References** - CRUD operations, validation
 - **Garbage collection** - Mark, sweep, dry-run, all object types including chunks
 - **Materialization** - Blobs, trees, chunked files, nested structures, permissions
+
+**Property Tests:**
+- **Hash determinism** - Hashing same data always produces same result
+- **Serialization round-trips** - All binary formats (headers, chunks, trees)
+- **Compression identity** - Compress/decompress preserves data
+- **Chunking invariants** - Size bounds, determinism, total size preservation
+- **Tree canonicalization** - Order-independent hashing
+- **GC correctness** - Preserves referenced, deletes unreferenced, idempotent
+- **Ref validation** - Valid names accepted
 
 ## Limitations (By Design)
 

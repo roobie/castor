@@ -159,6 +159,7 @@ This is a Rust workspace with two crates:
 
 **Test Coverage:**
 - 92 Rust unit tests (100% pass rate)
+- 23 property tests (generative invariant verification)
 - 248+ Python integration tests
 - Comprehensive coverage of compression, chunking, and all core features
 

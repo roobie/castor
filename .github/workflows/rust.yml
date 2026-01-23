@@ -20,3 +20,8 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run property tests
+      run: |
+        echo "Running property tests with proptest..."
+        cargo test --lib prop --verbose
+        echo "Property tests completed"

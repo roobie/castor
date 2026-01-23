@@ -208,4 +208,60 @@ mod tests {
         assert!(Algorithm::parse("unknown").is_err());
         assert!(Algorithm::from_id(99).is_err());
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            max_shrink_iters: 10000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 1: Hash determinism - hashing the same data always produces the same hash
+        #[test]
+        fn prop_hash_deterministic(data: Vec<u8>) {
+            let hash1 = Hash::hash_bytes(&data);
+            let hash2 = Hash::hash_bytes(&data);
+            prop_assert_eq!(hash1, hash2);
+        }
+
+        /// Property 2: Hex encoding is bijective - round-trip through hex preserves hash
+        #[test]
+        fn prop_hex_roundtrip(bytes in prop::array::uniform32(any::<u8>())) {
+            let hash = Hash::from_bytes(bytes);
+            let hex = hash.to_hex();
+            let parsed = Hash::from_hex(&hex)?;
+            prop_assert_eq!(hash, parsed);
+        }
+
+        /// Property 3: Prefix + suffix reconstruction equals full hex
+        #[test]
+        fn prop_prefix_suffix_concat(bytes in prop::array::uniform32(any::<u8>())) {
+            let hash = Hash::from_bytes(bytes);
+            let full = hash.to_hex();
+            let reconstructed = format!("{}{}", hash.prefix(), hash.suffix());
+            prop_assert_eq!(full, reconstructed);
+        }
+
+        /// Property 4: Invalid hex length always fails
+        #[test]
+        fn prop_invalid_hex_length_fails(
+            s in "[0-9a-f]{0,63}|[0-9a-f]{65,128}"
+        ) {
+            prop_assert!(Hash::from_hex(&s).is_err());
+        }
+
+        /// Property 5: Algorithm conversions are bijective
+        #[test]
+        fn prop_algorithm_roundtrip(
+            algo in prop::sample::select(vec![Algorithm::Blake3])
+        ) {
+            let s = algo.as_str();
+            let id = algo.id();
+            prop_assert_eq!(Algorithm::parse(s)?, algo);
+            prop_assert_eq!(Algorithm::from_id(id)?, algo);
+        }
+    }
 }

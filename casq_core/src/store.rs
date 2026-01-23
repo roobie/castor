@@ -1207,4 +1207,51 @@ mod tests {
         assert_eq!(orphans[0].hash, orphan_hash);
         assert_eq!(orphans[0].entry_count, 1);
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            max_shrink_iters: 10000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 18: Compression round-trip preserves data
+        #[test]
+        fn prop_compression_roundtrip(data in prop::collection::vec(any::<u8>(), 0..100_000)) {
+            let compressed = compress_zstd(&data)?;
+            let decompressed = decompress_zstd(&compressed)?;
+            prop_assert_eq!(decompressed, data, "Compression must be lossless");
+        }
+
+        /// Property 19: Compression threshold is respected
+        #[test]
+        fn prop_compression_threshold(data in prop::collection::vec(any::<u8>(), 0..10_000)) {
+            let temp_dir = TempDir::new().unwrap();
+            let store = Store::init(temp_dir.path(), Algorithm::Blake3)?;
+
+            let hash = store.put_blob(&data[..])?;
+            let obj_path = store.object_path(&hash);
+
+            // Read the object header to check compression type
+            let file_data = std::fs::read(&obj_path)?;
+            let header = crate::object::ObjectHeader::decode(&file_data)?;
+
+            if data.len() < COMPRESSION_THRESHOLD {
+                prop_assert_eq!(
+                    header.compression,
+                    crate::object::CompressionType::None,
+                    "Data < 4KB should not be compressed"
+                );
+            } else {
+                prop_assert_eq!(
+                    header.compression,
+                    crate::object::CompressionType::Zstd,
+                    "Data >= 4KB should be compressed"
+                );
+            }
+        }
+    }
 }

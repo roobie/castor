@@ -583,4 +583,108 @@ mod tests {
         assert!(orphan_hashes.contains(&tree1));
         assert!(orphan_hashes.contains(&tree2));
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 32,  // Expensive tests - reduced case count
+            max_shrink_iters: 5000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 20: GC preserves referenced objects
+        #[test]
+        fn prop_gc_preserves_referenced(_seed in any::<u64>()) {
+            let temp_dir = TempDir::new().unwrap();
+            let store = Store::init(temp_dir.path(), Algorithm::Blake3)?;
+
+            // Create referenced blob
+            let ref_data = b"referenced content";
+            let referenced_hash = store.put_blob(&ref_data[..])?;
+            store.refs().add("test-ref", &referenced_hash)?;
+
+            // Create unreferenced blob
+            let unref_data = b"unreferenced content";
+            let _unreferenced_hash = store.put_blob(&unref_data[..])?;
+
+            // Run GC
+            let stats = store.gc(false)?;
+
+            // Referenced object must still exist
+            prop_assert!(
+                store.get_blob(&referenced_hash).is_ok(),
+                "GC deleted a referenced object"
+            );
+
+            // Should have deleted at least one object (the unreferenced one)
+            prop_assert!(
+                stats.objects_deleted > 0,
+                "GC should delete unreferenced objects"
+            );
+        }
+
+        /// Property 21: GC deletes unreferenced objects
+        #[test]
+        fn prop_gc_deletes_unreferenced(_seed in any::<u64>()) {
+            let temp_dir = TempDir::new().unwrap();
+            let store = Store::init(temp_dir.path(), Algorithm::Blake3)?;
+
+            // Create referenced blob
+            let ref_data = b"referenced";
+            let referenced_hash = store.put_blob(&ref_data[..])?;
+            store.refs().add("keep", &referenced_hash)?;
+
+            // Create unreferenced blob
+            let unref_data = b"unreferenced";
+            let unreferenced_hash = store.put_blob(&unref_data[..])?;
+
+            // Run GC
+            store.gc(false)?;
+
+            // Unreferenced object must be deleted
+            prop_assert!(
+                store.get_blob(&unreferenced_hash).is_err(),
+                "GC failed to delete unreferenced object"
+            );
+
+            // Referenced object must still exist
+            prop_assert!(
+                store.get_blob(&referenced_hash).is_ok(),
+                "GC deleted referenced object"
+            );
+        }
+
+        /// Property 22: GC is idempotent
+        #[test]
+        fn prop_gc_idempotent(_seed in any::<u64>()) {
+            let temp_dir = TempDir::new().unwrap();
+            let store = Store::init(temp_dir.path(), Algorithm::Blake3)?;
+
+            // Create a referenced blob
+            let ref_hash = store.put_blob(b"referenced".as_ref())?;
+            store.refs().add("keep", &ref_hash)?;
+
+            // Create an unreferenced blob
+            store.put_blob(b"unreferenced".as_ref())?;
+
+            // Run GC twice
+            let stats1 = store.gc(false)?;
+            let stats2 = store.gc(false)?;
+
+            // Second run should delete nothing
+            prop_assert_eq!(
+                stats2.objects_deleted,
+                0,
+                "GC is not idempotent - deleted objects on second run"
+            );
+
+            // First run should have deleted something
+            prop_assert!(
+                stats1.objects_deleted > 0,
+                "First GC run should delete unreferenced objects"
+            );
+        }
+    }
 }

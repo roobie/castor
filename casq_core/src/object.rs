@@ -455,4 +455,86 @@ mod tests {
         );
         assert!(header.validate().is_ok());
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    // Strategy for generating arbitrary ObjectHeaders
+    fn arb_object_header() -> impl Strategy<Value = ObjectHeader> {
+        (
+            prop::sample::select(vec![ObjectType::Blob, ObjectType::Tree, ObjectType::ChunkList]),
+            prop::sample::select(vec![Algorithm::Blake3]),
+            prop::sample::select(vec![CompressionType::None, CompressionType::Zstd]),
+            any::<u64>(),
+        )
+            .prop_map(|(object_type, algorithm, compression, payload_len)| {
+                ObjectHeader::new(object_type, algorithm, compression, payload_len)
+            })
+    }
+
+    // Strategy for generating arbitrary ChunkLists
+    fn arb_chunk_list() -> impl Strategy<Value = ChunkList> {
+        prop::collection::vec(
+            (prop::array::uniform32(any::<u8>()), any::<u64>()),
+            0..20,
+        )
+        .prop_map(|chunks| ChunkList {
+            chunks: chunks
+                .into_iter()
+                .map(|(hash_bytes, size)| ChunkEntry {
+                    hash: crate::hash::Hash::from_bytes(hash_bytes),
+                    size,
+                })
+                .collect(),
+        })
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            max_shrink_iters: 10000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 6: Header serialization round-trip
+        #[test]
+        fn prop_header_roundtrip(header in arb_object_header()) {
+            let encoded = header.encode();
+            prop_assert_eq!(encoded.len(), HEADER_SIZE);
+            let decoded = ObjectHeader::decode(&encoded)?;
+            prop_assert_eq!(decoded, header);
+        }
+
+        /// Property 7: ChunkList round-trip
+        #[test]
+        fn prop_chunk_list_roundtrip(chunk_list in arb_chunk_list()) {
+            let encoded = chunk_list.encode();
+            prop_assert!(encoded.len().is_multiple_of(CHUNK_ENTRY_SIZE));
+            let decoded = ChunkList::decode(&encoded)?;
+            prop_assert_eq!(decoded, chunk_list);
+        }
+
+        /// Property 8: Invalid chunk list sizes rejected
+        #[test]
+        fn prop_invalid_chunk_size_rejected(
+            // Generate byte lengths that are NOT multiples of 40
+            bad_len in (1usize..400).prop_filter("not multiple of 40", |n| !n.is_multiple_of(CHUNK_ENTRY_SIZE))
+        ) {
+            let bad_bytes = vec![0u8; bad_len];
+            prop_assert!(ChunkList::decode(&bad_bytes).is_err());
+        }
+
+        /// Property 9: ObjectType conversions are bijective
+        #[test]
+        fn prop_object_type_roundtrip(
+            obj_type in prop::sample::select(vec![
+                ObjectType::Blob,
+                ObjectType::Tree,
+                ObjectType::ChunkList,
+            ])
+        ) {
+            let byte = obj_type.to_u8();
+            prop_assert_eq!(ObjectType::from_u8(byte)?, obj_type);
+        }
+    }
 }

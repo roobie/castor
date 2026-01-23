@@ -216,4 +216,42 @@ mod tests {
         assert!(refs.add("foo/bar", &hash).is_err());
         assert!(refs.add("", &hash).is_err());
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            max_shrink_iters: 10000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 23: Valid ref names are accepted
+        #[test]
+        fn prop_valid_ref_names_accepted(
+            name in "[a-zA-Z0-9_-]{1,50}"
+                .prop_filter("no path separators or dots", |n| {
+                    !n.contains("..") && !n.contains('/') && !n.contains('\\')
+                })
+        ) {
+            let temp_dir = TempDir::new().unwrap();
+            let store = Store::init(temp_dir.path(), Algorithm::Blake3)?;
+            let refs = store.refs();
+
+            let hash = Hash::hash_bytes(b"test data");
+
+            // Should successfully add a valid ref name
+            let result = refs.add(&name, &hash);
+            prop_assert!(
+                result.is_ok(),
+                "Valid ref name '{}' should be accepted",
+                name
+            );
+
+            // Should be able to retrieve it
+            let retrieved = refs.get(&name)?;
+            prop_assert_eq!(retrieved, Some(hash), "Should retrieve the same hash");
+        }
+    }
 }

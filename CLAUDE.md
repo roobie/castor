@@ -8,6 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
   Always prefer Serena MCP tools.
 
+## Testing and Quality Assurance Plans
+
+The project has dedicated implementation plans for advanced testing:
+
+- **[PROPERTY_TESTING_PLAN.md](PROPERTY_TESTING_PLAN.md)** - Phase 1: Property-based testing (immediate focus)
+- **[FUZZING_PLAN.md](FUZZING_PLAN.md)** - Future: Fuzzing strategy (deferred QA)
+
+These plans provide detailed implementation strategies for achieving production-grade robustness.
+
 ## Documentation Requirements
 
 **CRITICAL: All code changes MUST be accompanied by corresponding documentation updates BEFORE the work is considered complete.**

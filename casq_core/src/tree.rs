@@ -308,4 +308,112 @@ mod tests {
         let decoded = decode_tree(&encoded).unwrap();
         assert_eq!(decoded.len(), 0);
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    // Strategy for generating valid entry names (1-255 chars, no nulls)
+    fn arb_entry_name() -> impl Strategy<Value = String> {
+        "[a-zA-Z0-9._-]{1,255}"
+            .prop_filter("no null bytes", |s| !s.contains('\0'))
+    }
+
+    // Strategy for generating valid tree entries
+    fn arb_tree_entry() -> impl Strategy<Value = TreeEntry> {
+        (
+            prop::sample::select(vec![EntryType::Blob, EntryType::Tree]),
+            any::<u32>(),
+            prop::array::uniform32(any::<u8>()),
+            arb_entry_name(),
+        )
+            .prop_map(|(entry_type, mode, hash_bytes, name)| {
+                TreeEntry::new(entry_type, mode, Hash::from_bytes(hash_bytes), name).unwrap()
+            })
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 256,
+            max_shrink_iters: 10000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 10: TreeEntry round-trip
+        #[test]
+        fn prop_tree_entry_roundtrip(entry in arb_tree_entry()) {
+            let encoded = entry.encode();
+            let mut reader = std::io::Cursor::new(&encoded);
+            let decoded = TreeEntry::decode(&mut reader)?;
+            prop_assert_eq!(entry, decoded);
+        }
+
+        /// Property 11: Tree canonicalization - order-independent hashing
+        #[test]
+        fn prop_tree_canonicalization_order_independent(
+            entries in prop::collection::vec(arb_tree_entry(), 1..20)
+        ) {
+            // Hash of sorted entries
+            let mut sorted1 = entries.clone();
+            sorted1.sort();
+            let encoded1 = encode_tree(sorted1);
+            let hash1 = Hash::hash_bytes(&encoded1);
+
+            // Hash after reversing and re-sorting
+            let mut reversed = entries;
+            reversed.reverse();
+            reversed.sort();
+            let encoded2 = encode_tree(reversed);
+            let hash2 = Hash::hash_bytes(&encoded2);
+
+            prop_assert_eq!(
+                hash1,
+                hash2,
+                "Tree hash must be independent of input ordering"
+            );
+        }
+
+        /// Property 12: Empty names are rejected
+        #[test]
+        fn prop_empty_name_rejected(
+            entry_type in prop::sample::select(vec![EntryType::Blob, EntryType::Tree]),
+            mode in any::<u32>(),
+            hash_bytes in prop::array::uniform32(any::<u8>()),
+        ) {
+            let result = TreeEntry::new(
+                entry_type,
+                mode,
+                Hash::from_bytes(hash_bytes),
+                String::new(),
+            );
+            prop_assert!(result.is_err());
+        }
+
+        /// Property 13: Names with null bytes are rejected
+        #[test]
+        fn prop_null_byte_rejected(
+            prefix in "[a-zA-Z0-9]{0,10}",
+            suffix in "[a-zA-Z0-9]{0,10}",
+        ) {
+            let name = format!("{}\0{}", prefix, suffix);
+            let result = TreeEntry::new(
+                EntryType::Blob,
+                0o644,
+                Hash::hash_bytes(b"test"),
+                name,
+            );
+            prop_assert!(result.is_err());
+        }
+
+        /// Property 14: Names >255 bytes are rejected
+        #[test]
+        fn prop_long_name_rejected(name in "[a-zA-Z]{256,300}") {
+            let result = TreeEntry::new(
+                EntryType::Blob,
+                0o644,
+                Hash::hash_bytes(b"test"),
+                name,
+            );
+            prop_assert!(result.is_err());
+        }
+    }
 }

@@ -157,4 +157,78 @@ mod tests {
         // Empty file should create no chunks
         assert_eq!(chunks.len(), 0, "Empty file should create no chunks");
     }
+
+    // Property-based tests
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 32,  // Reduced case count - chunking is expensive
+            max_shrink_iters: 5000,
+            ..ProptestConfig::default()
+        })]
+
+        /// Property 15: Chunk sizes are bounded by min/max (except possibly last chunk)
+        #[test]
+        fn prop_chunk_sizes_bounded(
+            data in prop::collection::vec(any::<u8>(), 0..2_000_000)
+        ) {
+            let config = ChunkerConfig::default();
+            let chunks = chunk_file(&data, &config)?;
+
+            for (i, chunk) in chunks.iter().enumerate() {
+                let is_last = i == chunks.len() - 1;
+
+                // All chunks must be <= max_size
+                prop_assert!(
+                    chunk.size <= config.max_size as u64,
+                    "Chunk {} size {} exceeds max {}",
+                    i, chunk.size, config.max_size
+                );
+
+                // All chunks except possibly the last must be >= min_size
+                if !is_last && chunks.len() > 1 {
+                    prop_assert!(
+                        chunk.size >= config.min_size as u64,
+                        "Chunk {} size {} below min {} (not last chunk)",
+                        i, chunk.size, config.min_size
+                    );
+                }
+            }
+        }
+
+        /// Property 16: Chunking is deterministic - same data produces identical chunks
+        #[test]
+        fn prop_chunking_deterministic(
+            data in prop::collection::vec(any::<u8>(), 0..2_000_000)
+        ) {
+            let config = ChunkerConfig::default();
+
+            let chunks1 = chunk_file(&data, &config)?;
+            let chunks2 = chunk_file(&data, &config)?;
+
+            prop_assert_eq!(chunks1.len(), chunks2.len(), "Chunk count must be deterministic");
+
+            for (i, (c1, c2)) in chunks1.iter().zip(chunks2.iter()).enumerate() {
+                prop_assert_eq!(c1.hash, c2.hash, "Chunk {} hash must be deterministic", i);
+                prop_assert_eq!(c1.size, c2.size, "Chunk {} size must be deterministic", i);
+            }
+        }
+
+        /// Property 17: Total chunk size equals input data size
+        #[test]
+        fn prop_total_size_preserved(
+            data in prop::collection::vec(any::<u8>(), 0..2_000_000)
+        ) {
+            let config = ChunkerConfig::default();
+            let chunks = chunk_file(&data, &config)?;
+
+            let total_size: u64 = chunks.iter().map(|c| c.size).sum();
+            prop_assert_eq!(
+                total_size,
+                data.len() as u64,
+                "Total chunk size must equal input size"
+            );
+        }
+    }
 }
