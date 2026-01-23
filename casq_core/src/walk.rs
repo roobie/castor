@@ -68,6 +68,37 @@ impl Store {
         Ok(hash)
     }
 
+    /// Add content from stdin as a blob.
+    ///
+    /// Records the operation in the journal with path "(stdin)".
+    /// Returns the hash of the stored blob.
+    pub fn add_stdin<R: std::io::Read>(&self, reader: R) -> Result<Hash> {
+        // Store blob from reader (handles compression/chunking automatically)
+        let hash = self.put_blob(reader)?;
+
+        // Query object file size after storage
+        let obj_path = self.object_path(&hash);
+        let obj_size = fs::metadata(&obj_path)?.len();
+
+        // Record in journal (entries=1, always a blob)
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        let journal_entry = JournalEntry::new(
+            timestamp,
+            "add".to_string(),
+            hash,
+            "(stdin)".to_string(),
+            format!("entries=1,size={}", obj_size),
+        );
+
+        self.journal().append(&journal_entry)?;
+
+        Ok(hash)
+    }
+
     /// Add a single file as a blob.
     fn add_file(&self, path: &Path) -> Result<Hash> {
         let file = fs::File::open(path)?;
@@ -274,5 +305,108 @@ mod tests {
 
         assert_eq!(tree.len(), 1);
         assert_eq!(tree[0].mode, file_modes::EXECUTABLE);
+    }
+
+    #[test]
+    fn test_add_stdin_basic() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        let input = b"hello from stdin";
+        let cursor = std::io::Cursor::new(input);
+
+        let hash = store.add_stdin(cursor).unwrap();
+        let expected = Hash::hash_bytes(input);
+        assert_eq!(hash, expected);
+
+        // Verify we can retrieve the content
+        let blob = store.get_blob(&hash).unwrap();
+        assert_eq!(blob, input);
+    }
+
+    #[test]
+    fn test_add_stdin_empty() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        let input = b"";
+        let cursor = std::io::Cursor::new(input);
+
+        let hash = store.add_stdin(cursor).unwrap();
+        let expected = Hash::hash_bytes(input);
+        assert_eq!(hash, expected);
+
+        // Verify empty content is stored correctly
+        let blob = store.get_blob(&hash).unwrap();
+        assert_eq!(blob.len(), 0);
+    }
+
+    #[test]
+    fn test_add_stdin_large_triggers_compression() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        // 8KB of data (exceeds 4KB compression threshold)
+        let input = vec![b'A'; 8192];
+        let cursor = std::io::Cursor::new(&input);
+
+        let hash = store.add_stdin(cursor).unwrap();
+        let expected = Hash::hash_bytes(&input);
+        assert_eq!(hash, expected);
+
+        // Verify content is retrievable (decompression transparent)
+        let blob = store.get_blob(&hash).unwrap();
+        assert_eq!(blob, input);
+
+        // Verify compression occurred (object file should be smaller than 8KB)
+        let obj_path = store.object_path(&hash);
+        let obj_size = fs::metadata(&obj_path).unwrap().len();
+        // Object size includes 16-byte header, so compressed payload should be much less
+        assert!(
+            obj_size < 8192,
+            "Expected compression, got object size {}",
+            obj_size
+        );
+    }
+
+    #[test]
+    fn test_add_stdin_very_large_triggers_chunking() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        // 2MB of data (exceeds 1MB chunking threshold)
+        let input = vec![b'B'; 2 * 1024 * 1024];
+        let cursor = std::io::Cursor::new(&input);
+
+        let hash = store.add_stdin(cursor).unwrap();
+        let expected = Hash::hash_bytes(&input);
+        assert_eq!(hash, expected);
+
+        // Verify content is retrievable (chunking transparent)
+        let blob = store.get_blob(&hash).unwrap();
+        assert_eq!(blob.len(), input.len());
+        assert_eq!(blob, input);
+    }
+
+    #[test]
+    fn test_add_stdin_journal_entry() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();
+
+        let input = b"test content";
+        let cursor = std::io::Cursor::new(input);
+
+        let hash = store.add_stdin(cursor).unwrap();
+
+        // Verify journal entry exists
+        let entries = store.journal().read_recent(10).unwrap();
+        assert_eq!(entries.len(), 1);
+
+        let entry = &entries[0];
+        assert_eq!(entry.operation, "add");
+        assert_eq!(entry.hash, hash);
+        assert_eq!(entry.path, "(stdin)");
+        assert!(entry.metadata.contains("entries=1"));
+        assert!(entry.metadata.contains("size="));
     }
 }

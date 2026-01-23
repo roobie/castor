@@ -462,7 +462,11 @@ mod tests {
     // Strategy for generating arbitrary ObjectHeaders
     fn arb_object_header() -> impl Strategy<Value = ObjectHeader> {
         (
-            prop::sample::select(vec![ObjectType::Blob, ObjectType::Tree, ObjectType::ChunkList]),
+            prop::sample::select(vec![
+                ObjectType::Blob,
+                ObjectType::Tree,
+                ObjectType::ChunkList,
+            ]),
             prop::sample::select(vec![Algorithm::Blake3]),
             prop::sample::select(vec![CompressionType::None, CompressionType::Zstd]),
             any::<u64>(),
@@ -474,19 +478,17 @@ mod tests {
 
     // Strategy for generating arbitrary ChunkLists
     fn arb_chunk_list() -> impl Strategy<Value = ChunkList> {
-        prop::collection::vec(
-            (prop::array::uniform32(any::<u8>()), any::<u64>()),
-            0..20,
+        prop::collection::vec((prop::array::uniform32(any::<u8>()), any::<u64>()), 0..20).prop_map(
+            |chunks| ChunkList {
+                chunks: chunks
+                    .into_iter()
+                    .map(|(hash_bytes, size)| ChunkEntry {
+                        hash: crate::hash::Hash::from_bytes(hash_bytes),
+                        size,
+                    })
+                    .collect(),
+            },
         )
-        .prop_map(|chunks| ChunkList {
-            chunks: chunks
-                .into_iter()
-                .map(|(hash_bytes, size)| ChunkEntry {
-                    hash: crate::hash::Hash::from_bytes(hash_bytes),
-                    size,
-                })
-                .collect(),
-        })
     }
 
     proptest! {

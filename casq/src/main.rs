@@ -29,9 +29,9 @@ enum Commands {
 
     /// Add files or directories to the store
     Add {
-        /// Paths to add
+        /// Paths to add (or "-" to read from stdin)
         #[arg(required = true)]
-        paths: Vec<PathBuf>,
+        paths: Vec<String>,
 
         /// Create a reference to the added content
         #[arg(long)]
@@ -162,16 +162,30 @@ fn cmd_init(root: &Path, algo: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_add(root: &Path, paths: Vec<PathBuf>, ref_name: Option<String>) -> Result<()> {
+fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
-    for path in paths {
-        let hash = store
-            .add_path(&path)
-            .with_context(|| format!("Failed to add path: {}", path.display()))?;
+    // Detect stdin mode
+    let has_stdin = paths.iter().any(|p| p == "-");
+    let has_paths = paths.iter().any(|p| p != "-");
 
-        println!("{} {}", hash, path.display());
+    // Validate: no mixing stdin with filesystem paths
+    if has_stdin && has_paths {
+        anyhow::bail!(
+            "Cannot mix stdin ('-') with filesystem paths.\n\
+             Use either: casq add - (for stdin) OR casq add path1 path2 (for files)"
+        );
+    }
+
+    // Validate: at most one stdin reference
+    if paths.iter().filter(|p| *p == "-").count() > 1 {
+        anyhow::bail!("stdin can only be read once per invocation");
+    }
+
+    // Process based on mode
+    if has_stdin {
+        let hash = add_from_stdin(&store)?;
 
         // Create reference if requested
         if let Some(ref name) = ref_name {
@@ -181,9 +195,51 @@ fn cmd_add(root: &Path, paths: Vec<PathBuf>, ref_name: Option<String>) -> Result
                 .with_context(|| format!("Failed to create reference: {}", name))?;
             println!("Created reference: {} -> {}", name, hash);
         }
+    } else {
+        // Regular filesystem paths
+        let mut last_hash = None;
+        for path_str in paths {
+            let path = PathBuf::from(&path_str);
+            let hash = store
+                .add_path(&path)
+                .with_context(|| format!("Failed to add path: {}", path.display()))?;
+
+            println!("{} {}", hash, path.display());
+            last_hash = Some(hash);
+        }
+
+        // Create reference if requested (points to last hash if multiple paths)
+        if let Some(ref name) = ref_name {
+            if let Some(hash) = last_hash {
+                store
+                    .refs()
+                    .add(name, &hash)
+                    .with_context(|| format!("Failed to create reference: {}", name))?;
+                println!("Created reference: {} -> {}", name, hash);
+            }
+        }
     }
 
     Ok(())
+}
+
+fn add_from_stdin(store: &Store) -> Result<Hash> {
+    // Validate stdin is not a TTY (prevent user confusion)
+    if atty::is(atty::Stream::Stdin) {
+        anyhow::bail!(
+            "stdin is a terminal (refusing to read). Pipe data with: command | casq add -"
+        );
+    }
+
+    let stdin = io::stdin();
+    let hash = store
+        .add_stdin(stdin.lock())
+        .with_context(|| "Failed to read from stdin")?;
+
+    // Output format: hash with descriptive label
+    println!("{} (stdin)", hash);
+
+    Ok(hash)
 }
 
 fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path) -> Result<()> {

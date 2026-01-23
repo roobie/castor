@@ -314,8 +314,7 @@ mod tests {
 
     // Strategy for generating valid entry names (1-255 chars, no nulls)
     fn arb_entry_name() -> impl Strategy<Value = String> {
-        "[a-zA-Z0-9._-]{1,255}"
-            .prop_filter("no null bytes", |s| !s.contains('\0'))
+        "[a-zA-Z0-9._-]{1,255}".prop_filter("no null bytes", |s| !s.contains('\0'))
     }
 
     // Strategy for generating valid tree entries
