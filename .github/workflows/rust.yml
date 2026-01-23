@@ -1,48 +1,124 @@
-name: Rust
+name: BuildAndRelease
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "master"
+      - "release/*"
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 env:
   CARGO_TERM_COLOR: always
+  BINARY_NAME: casq # <-- set this to your binary name
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
-    - name: Run property tests
-      run: |
-        echo "Running property tests with proptest..."
-        cargo test --lib prop --verbose
-        echo "Property tests completed"
+      - uses: actions/checkout@v4
 
-    # Python / uv / pytest
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
+      # Rust build & tests
+      - name: Build
+        run: cargo build --verbose
 
-    - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Run Rust tests
+        run: cargo test --verbose
 
-    # If your uv project needs sync before running tests
-    - name: Sync Python dependencies (uv)
-      working-directory: casq-test
-      run: uv sync
+      - name: Run Rust property tests
+        run: |
+          echo "Running property tests with proptest..."
+          cargo test --lib prop --verbose
+          echo "Property tests completed"
 
-    - name: Run Python tests (pytest via uv)
-      working-directory: casq-test
-      run: uv run pytest
+      # Python / uv / pytest
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Sync Python dependencies (uv)
+        working-directory: casq-test
+        run: uv sync
+
+      - name: Run Python tests (pytest via uv)
+        working-directory: casq-test
+        run: uv run pytest
+
+  build_binaries:
+    needs: test
+    # Only build release binaries on release branches
+    if: startsWith(github.ref, 'refs/heads/release/')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_suffix: linux-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_suffix: macos-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_suffix: windows-amd64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install target (if needed)
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp "target/${{ matrix.target }}/release/${BINARY_NAME}.exe" "dist/${BINARY_NAME}-${{ matrix.artifact_suffix }}.exe"
+          else
+            cp "target/${{ matrix.target }}/release/${BINARY_NAME}" "dist/${BINARY_NAME}-${{ matrix.artifact_suffix }}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ matrix.artifact_suffix }}
+          path: dist/*
+
+  create_release:
+    needs: [test, build_binaries]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/release/')
+
+    steps:
+      - name: Extract version from branch name
+        id: version
+        run: |
+          # refs/heads/release/v1.2.3 -> v1.2.3
+          BRANCH="${GITHUB_REF##*/}"
+          echo "version=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          files: dist/**/*  # all platform binaries
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
