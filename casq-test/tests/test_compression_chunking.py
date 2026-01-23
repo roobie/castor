@@ -1,13 +1,11 @@
 """Tests for compression and chunking features (v0.4.0)."""
 
 import pytest
-import struct
 from pathlib import Path
 from fixtures import sample_files
 from helpers.verification import (
     verify_object_exists,
     get_object_path,
-    get_object_type,
     count_objects,
     read_object_header,
 )
@@ -25,7 +23,7 @@ def get_compression_type(store_path: Path, hash_str: str, algo: str = "blake3-25
     Returns:
         Compression type: 0=None, 1=Zstd
     """
-    header = read_object_header(store_path, hash_str, algo)
+    # header = read_object_header(store_path, hash_str, algo)
     obj_path = get_object_path(store_path, hash_str, algo)
 
     with open(obj_path, "rb") as f:

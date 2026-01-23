@@ -2,7 +2,6 @@
 
 import pytest
 import os
-from pathlib import Path
 from helpers.verification import verify_store_structure
 
 
