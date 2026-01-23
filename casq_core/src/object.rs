@@ -276,7 +276,7 @@ impl ChunkList {
 
     /// Decode a chunk list from bytes.
     pub fn decode(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() % CHUNK_ENTRY_SIZE != 0 {
+        if !bytes.len().is_multiple_of(CHUNK_ENTRY_SIZE) {
             return Err(Error::invalid_chunk_list(format!(
                 "ChunkList payload size {} is not a multiple of {}",
                 bytes.len(),
