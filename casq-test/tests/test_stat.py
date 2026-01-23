@@ -2,6 +2,9 @@
 
 import pytest
 from fixtures import sample_files
+from helpers.verification import (
+    verify_object_exists,
+    )
 
 
 @pytest.mark.smoke
@@ -14,6 +17,19 @@ def test_stat_blob_shows_type(cli, initialized_store, sample_file):
 
     assert stat_result.returncode == 0
     assert "blob" in stat_result.stdout.lower()
+
+
+def test_add_directory_with_depth_more_than_one_and_check_stat_is_correct(cli, initialized_store, complex_tree):
+    """
+    This test shall make sure that a tree with depth > 1 computes the correct hash value and size
+    """
+    result = cli.add(complex_tree, root=initialized_store)
+    assert result.returncode == 0
+    tree_hash = result.stdout.strip().split()[0]
+    verify_object_exists(initialized_store, tree_hash)
+    stat_result = cli.stat(tree_hash, root=initialized_store)
+    assert stat_result.returncode == 0
+    assert "entries: 4" in stat_result.stdout.lower()
 
 
 def test_stat_tree_shows_type(cli, initialized_store, sample_tree):

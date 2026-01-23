@@ -314,7 +314,7 @@ fn cmd_stat(root: &Path, hash_str: &str) -> Result<()> {
         Ok(entries) => {
             println!("Hash: {}", hash);
             println!("Type: tree");
-            println!("Entries: {}", entries.len());
+            println!("Entries: {}", entries.len()); // TODO: perhaps we need to support --recurse to count recursively.
             println!("Size: {} bytes (on disk)", metadata.len());
             println!("Path: {}", obj_path.display());
         }

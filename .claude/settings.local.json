@@ -7,18 +7,13 @@
       "Bash(cargo fmt:*)",
       "Bash(cargo build:*)",
       "Bash(cargo run:*)",
-      "Bash(/workspace/target/release/castor:*)",
-      "Bash(/workspace/target/debug/castor gc:*)",
-      "Bash(/workspace/target/debug/castor materialize:*)",
-      "Bash(/workspace/target/debug/castor ls:*)",
       "mcp__serena__list_dir",
       "mcp__serena__get_symbols_overview",
-      "Bash(/workspace/target/debug/castor refs add:*)",
-      "Bash(/workspace/target/debug/castor refs rm:*)",
-      "Bash(/workspace/target/debug/castor stat:*)",
-      "Bash(uv run ruff:*)",
-      "Bash(uv run pytest:*)",
-      "Bash(just test:*)"
+        "Bash(uv run ruff:*)",
+        "Bash(uv run pytest:*)",
+        "Bash(just test:*)",
+        "Bash(ls:*)"
+        "Bash(wc:*)"
     ]
   }
 }

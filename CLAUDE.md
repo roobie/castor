@@ -4,8 +4,90 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## General rules
 
-  Documentation in all forms (files in repo, memories etc) must be kept updated and current.
+  **CRITICAL**: Documentation in all forms (files in repo, memories etc) MUST be kept updated and current as part of ANY code change. Documentation updates are NOT optional and are NOT deferred - they are completed in the SAME work session as the code implementation. See "Documentation Requirements" section below for detailed guidelines.
+
   Always prefer Serena MCP tools.
+
+## Documentation Requirements
+
+**CRITICAL: All code changes MUST be accompanied by corresponding documentation updates BEFORE the work is considered complete.**
+
+### Documentation Update Checklist
+
+When implementing changes, you MUST update the relevant documentation files as part of the same work session:
+
+1. **For ALL changes:**
+   - Update `/workspace/CLAUDE.md` if project structure, architecture, or development guidelines change
+
+2. **For new features or API changes:**
+   - Update `/workspace/README.md` (main project overview)
+   - Update `/workspace/casq_core/README.md` (if core library changes)
+   - Update `/workspace/casq/README.md` (if CLI changes)
+   - Update `/workspace/NOTES.md` (if design/architecture changes)
+
+3. **For new tests or test infrastructure:**
+   - Update `/workspace/casq-test/README.md` (test suite documentation)
+   - Update `/workspace/TESTING.md` (testing guide)
+
+4. **For implementation milestones:**
+   - Create or update `/workspace/IMPLEMENTATION_SUMMARY.md` with details of what was implemented
+
+### What Requires Documentation Updates
+
+- ✅ **New features** - Add to feature lists in all READMEs
+- ✅ **API changes** - Update API examples and signatures
+- ✅ **New dependencies** - Update dependency lists in all READMEs
+- ✅ **Architecture changes** - Update CLAUDE.md, NOTES.md, and relevant READMEs
+- ✅ **New commands** - Update CLI documentation with examples
+- ✅ **Performance characteristics** - Update performance sections
+- ✅ **Object format changes** - Update format specifications
+- ✅ **Test coverage changes** - Update test count and coverage sections
+- ✅ **Limitations removed** - Update limitations sections
+- ✅ **New modules** - Update module structure documentation
+
+### Documentation Update Process
+
+**DO NOT:**
+- ❌ Implement a feature and say "documentation can be updated later"
+- ❌ Skip documentation updates because they seem minor
+- ❌ Update only one README when changes affect multiple areas
+- ❌ Leave documentation with outdated version numbers, test counts, or feature lists
+
+**DO:**
+- ✅ Update documentation in the SAME session as code implementation
+- ✅ Check ALL relevant README files for needed updates
+- ✅ Verify version numbers, test counts, and statistics are current
+- ✅ Update examples to use new features
+- ✅ Remove outdated limitations when features are implemented
+- ✅ Use TodoWrite to track documentation updates as separate tasks
+
+### Example: Feature Implementation Flow
+
+```
+1. Implement feature code
+2. Write/update tests
+3. Verify tests pass
+4. Update /workspace/README.md (if applicable)
+5. Update /workspace/casq_core/README.md (if library changes)
+6. Update /workspace/casq/README.md (if CLI changes)
+7. Update /workspace/CLAUDE.md (if architecture/process changes)
+8. Update /workspace/TESTING.md (if test infrastructure changes)
+9. Verify all documentation is consistent
+10. THEN mark work as complete
+```
+
+### Verification Before Completion
+
+Before considering any work complete, verify:
+- [ ] All relevant README files reviewed and updated
+- [ ] Version numbers updated if applicable
+- [ ] Test counts updated to match reality
+- [ ] New features added to feature lists
+- [ ] Examples updated to use new capabilities
+- [ ] Removed limitations that are now implemented
+- [ ] Architecture diagrams/descriptions updated if structure changed
+- [ ] Dependencies lists current
+- [ ] No references to "TODO" or "future work" for completed features
 
 ## Project Overview
 
@@ -266,6 +348,33 @@ $ casq refs add important-data abc123def...
 - Files 4KB - 1MB: Compressed Blob (v2 format)
 - Files ≥ 1MB: ChunkList pointing to compressed chunks
 
+### Implementation Workflow
+
+When implementing new features:
+
+1. **Planning Phase:**
+   - Identify which documentation files will need updates
+   - Add documentation update tasks to TodoWrite list
+
+2. **Implementation Phase:**
+   - Write code
+   - Write/update tests
+   - Run tests to verify
+
+3. **Documentation Phase (REQUIRED BEFORE COMPLETION):**
+   - Update all identified documentation files
+   - Verify consistency across all documentation
+   - Check for outdated references
+   - Update version numbers and statistics
+
+4. **Verification Phase:**
+   - Run full test suite
+   - Review all documentation changes
+   - Ensure no "TODO" markers for completed work
+   - Mark work as complete only after documentation is updated
+
+**Remember: Documentation is not optional. Code without documentation updates is incomplete work.**
+
 ### Hashing Rules
 - **Blob hash**: `hash = blake3(uncompressed_payload_bytes)` (payload only, not header)
 - **ChunkList hash**: `hash = blake3(original_file_bytes)` (not the ChunkList metadata)
@@ -361,3 +470,17 @@ $ casq refs add important-data abc123def...
 **Chunk deduplication:**
 - Shared content across files stored only once
 - Example: 10 files with identical 5MB section = 5MB stored (not 50MB)
+
+---
+
+## IMPORTANT: Keeping This Document Current
+
+When you implement changes to casq:
+
+1. **Immediately update this CLAUDE.md file** with any architectural, structural, or procedural changes
+2. **Update the "Current Implementation Status" section** when features are added or test counts change
+3. **Update "Known Limitations"** when limitations are removed or new ones are identified
+4. **Update "Module Organization"** when files are added, removed, or significantly restructured
+5. **Update examples and documentation** to reflect new capabilities
+
+**This document is a living guide - it must evolve with the codebase. Stale documentation is worse than no documentation.**

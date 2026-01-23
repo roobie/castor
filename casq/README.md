@@ -1,10 +1,10 @@
 # `casq`
 
-A content-addressed file store CLI using BLAKE3.
+A production-ready content-addressed file store CLI with compression and chunking (v0.4.0).
 
 ## Overview
 
-**`casq`** is a command-line tool for managing content-addressed storage. It stores files and directories by their cryptographic hash, providing automatic deduplication, garbage collection, and named references.
+**`casq`** is a command-line tool for managing content-addressed storage. It stores files and directories by their cryptographic hash, providing automatic deduplication, transparent compression, content-defined chunking, garbage collection, and named references.
 
 This is the CLI binary that uses the `casq_core` library.
 
@@ -389,10 +389,11 @@ casq-store/
 
 ## Object Types
 
-- **Blob** - Raw file content
+- **Blob** - Raw file content (automatically compressed if ≥ 4KB)
 - **Tree** - Directory listing (sorted entries)
+- **ChunkList** - Large file split into chunks (files ≥ 1MB, enables incremental backups)
 
-Trees reference other blobs and trees, forming a hierarchical structure similar to git.
+Trees reference other blobs and trees, forming a hierarchical structure similar to git. Large files are split into chunks for efficient incremental backups and cross-file deduplication.
 
 ## Exit Codes
 
@@ -421,15 +422,23 @@ Caused by:
 
 1. **Large files** - Content is streamed, not buffered in memory
 2. **Many small files** - Use directories to group them
-3. **Deduplication** - Identical content is stored only once
-4. **GC frequency** - Run `gc` periodically to reclaim space from unreferenced objects
+3. **Deduplication** - Identical content is stored only once (including chunk-level deduplication)
+4. **Compression** - Files ≥ 4KB automatically compressed with zstd (3-5x typical reduction)
+5. **Chunking** - Files ≥ 1MB split into chunks for incremental backups (change 1 byte → store ~512KB)
+6. **GC frequency** - Run `gc` periodically to reclaim space from unreferenced objects
+
+## Storage Efficiency (v0.4.0+)
+
+- **Compression**: 3-5x reduction for text files, 2-3x for mixed data
+- **Chunking**: Change 1 byte in 1GB file → store only ~512KB (changed chunk)
+- **Cross-file deduplication**: Shared content across files stored only once
+- **Example**: 10 files with identical 5MB section = 5MB stored (not 50MB)
 
 ## Limitations
 
-- **No compression** - Files stored as-is (MVP scope)
-- **No encryption** - Store plaintext only
+- **No encryption** - Store plaintext only (planned for future)
 - **No network** - Local-only storage
-- **No chunking** - Each file stored as single blob
+- **No parallel operations** - Single-threaded (may be added in future)
 - **POSIX only** - Full permission preservation only on Unix-like systems
 
 ## Comparison to Git

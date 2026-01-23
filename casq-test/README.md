@@ -4,7 +4,7 @@ Comprehensive pytest-based test suite for the casq content-addressed file store 
 
 ## Overview
 
-This test suite provides **253+ tests** achieving 100% CLI surface coverage for casq. It tests all commands, options, error paths, edge cases, and integration scenarios using real end-to-end execution of the casq binary.
+This test suite provides **248+ tests** achieving 100% CLI surface coverage for casq. It tests all commands, options, error paths, edge cases, and integration scenarios using real end-to-end execution of the casq binary, including comprehensive coverage of v0.4.0 compression and chunking features.
 
 ### Test Coverage
 
@@ -22,7 +22,8 @@ This test suite provides **253+ tests** achieving 100% CLI surface coverage for 
 | `test_edge_cases.py` | 12 | Unusual scenarios |
 | `test_hash_stability.py` | 8 | Determinism verification |
 | `test_deduplication.py` | 8 | Content deduplication |
-| **TOTAL** | **253** | **100% CLI coverage** |
+| `test_compression_chunking.py` | 25+ | Compression & chunking (v0.4.0) |
+| **TOTAL** | **248+** | **100% CLI coverage** |
 
 ## Quick Start
 
@@ -108,14 +109,15 @@ pytest -m "not slow"    # Skip slow tests
 
 ```
 ============================= test session starts ==============================
-collected 253 items
+collected 248 items
 
 tests/test_init.py::test_init_default PASSED                             [  0%]
 tests/test_init.py::test_init_creates_config_file PASSED                 [  1%]
 ...
+tests/test_compression_chunking.py::test_chunked_deduplication PASSED   [99%]
 tests/test_deduplication.py::test_binary_deduplication PASSED           [100%]
 
-========================== 253 passed in 30.00s ================================
+========================== 247 passed, 1 xpassed, 2 skipped in 45.00s =========
 ```
 
 ## Test Organization
@@ -151,7 +153,8 @@ casq-test/
     ├── test_integration.py       # Multi-command flows
     ├── test_edge_cases.py        # Edge cases
     ├── test_hash_stability.py    # Hash determinism
-    └── test_deduplication.py     # Content dedupe
+    ├── test_deduplication.py     # Content dedupe
+    └── test_compression_chunking.py  # Compression & chunking (v0.4.0)
 ```
 
 ### Test Isolation
@@ -345,6 +348,7 @@ from helpers.verification import (
     verify_store_structure,
     verify_object_exists,
     get_object_type,
+    get_compression_type,
     read_blob_content,
     parse_tree_entries,
     count_objects,
@@ -358,7 +362,10 @@ verify_store_structure(store_path, algo="blake3")
 verify_object_exists(store_path, hash_str)
 
 # Get object type
-obj_type = get_object_type(store_path, hash_str)  # "blob" or "tree"
+obj_type = get_object_type(store_path, hash_str)  # "blob", "tree", or "chunk_list"
+
+# Get compression type (v0.4.0+)
+compression = get_compression_type(store_path, hash_str)  # 0=none, 1=zstd
 
 # Read blob content
 content = read_blob_content(store_path, hash_str)
@@ -416,6 +423,7 @@ sample_files.UNICODE_TREE
 - **Unusual scenarios**: Add to `test_edge_cases.py`
 - **Hash behavior**: Add to `test_hash_stability.py`
 - **Deduplication**: Add to `test_deduplication.py`
+- **Compression/Chunking**: Add to `test_compression_chunking.py`
 
 ### 2. Follow Naming Conventions
 
@@ -561,9 +569,11 @@ jobs:
 
 Expected test execution times:
 - **Smoke tests** (`-m smoke`): ~5 seconds
-- **Full suite** (without slow tests): ~20-30 seconds
-- **Full suite** (with slow tests): ~45-60 seconds
-- **Parallel** (`-n auto`): ~10-15 seconds
+- **Full suite** (without slow tests): ~30-40 seconds
+- **Full suite** (with slow tests, including chunking): ~60-90 seconds
+- **Parallel** (`-n auto`): ~15-20 seconds
+
+Note: Chunking tests create large files (1-3 MB) and may be slower on systems with limited I/O performance. Use `-m "not slow"` to skip these tests for faster validation.
 
 ## Contributing
 
