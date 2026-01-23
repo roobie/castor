@@ -87,7 +87,7 @@ def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3-256"
         algo: Hash algorithm
 
     Returns:
-        Dict with keys: magic, version, type, algo_id, payload_len
+        Dict with keys: magic, version, type, algo_id, compression, payload_len
     """
     obj_path = get_object_path(store_path, hash_str, algo)
 
@@ -100,7 +100,7 @@ def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3-256"
         version = header_bytes[4]
         obj_type = header_bytes[5]
         algo_id = header_bytes[6]
-        header_bytes[7]
+        compression = header_bytes[7]  # v2: compression type, v1: reserved (0)
         payload_len = struct.unpack("<Q", header_bytes[8:16])[0]
 
         return {
@@ -108,13 +108,14 @@ def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3-256"
             "version": version,
             "type": obj_type,
             "algo": algo_id,
+            "compression": compression,
             "payload_len": payload_len,
         }
 
 
 def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3-256") -> str:
     """
-    Get the type of an object (blob or tree).
+    Get the type of an object (blob, tree, or chunk_list).
 
     Args:
         store_path: Path to the store root
@@ -122,7 +123,7 @@ def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3-256") -
         algo: Hash algorithm
 
     Returns:
-        "blob" or "tree"
+        "blob", "tree", or "chunk_list"
     """
     header = read_object_header(store_path, hash_str, algo)
     type_id = header["type"]
@@ -131,6 +132,8 @@ def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3-256") -
         return "blob"
     elif type_id == 2:
         return "tree"
+    elif type_id == 3:
+        return "chunk_list"
     else:
         raise ValueError(f"Unknown object type: {type_id}")
 

@@ -17,7 +17,8 @@
       "Bash(/workspace/target/debug/castor refs rm:*)",
       "Bash(/workspace/target/debug/castor stat:*)",
       "Bash(uv run ruff:*)",
-      "Bash(uv run pytest:*)"
+      "Bash(uv run pytest:*)",
+      "Bash(just test:*)"
     ]
   }
 }

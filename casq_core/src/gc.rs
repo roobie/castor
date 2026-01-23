@@ -77,10 +77,24 @@ impl Store {
 
         // If it's a tree, recursively mark children
         let header = self.read_object_header(&obj_path)?;
-        if header.object_type == ObjectType::Tree {
-            let tree = self.get_tree(hash)?;
-            for entry in tree {
-                self.mark_object(&entry.hash, reachable)?;
+        match header.object_type {
+            ObjectType::Tree => {
+                let tree = self.get_tree(hash)?;
+                for entry in tree {
+                    self.mark_object(&entry.hash, reachable)?;
+                }
+            }
+            ObjectType::ChunkList => {
+                // Mark all chunks as reachable
+                use crate::object::ChunkList;
+                let chunk_list_payload = self.read_object_payload(&obj_path, header.payload_len)?;
+                let chunk_list = ChunkList::decode(&chunk_list_payload)?;
+                for chunk_entry in &chunk_list.chunks {
+                    self.mark_object(&chunk_entry.hash, reachable)?;
+                }
+            }
+            ObjectType::Blob => {
+                // Blobs have no children
             }
         }
 

@@ -192,7 +192,7 @@ impl Store {
     }
 
     /// Read the full payload of an object.
-    fn read_object_payload(&self, path: &Path, expected_len: u64) -> Result<Vec<u8>> {
+    pub(crate) fn read_object_payload(&self, path: &Path, expected_len: u64) -> Result<Vec<u8>> {
         let mut file = fs::File::open(path)?;
 
         // Skip header
@@ -302,27 +302,17 @@ impl Store {
         let config = ChunkerConfig::default();
         let chunks = chunk_file(data, &config)?;
 
-        // Write each chunk as a blob
+        // Write each chunk as a blob (tracking offset as we go)
+        let mut offset = 0;
         for chunk_entry in &chunks {
-            // Find the chunk data
-            let mut offset = 0;
-            let mut current_chunk_idx = 0;
-            let chunk_data = loop {
-                if current_chunk_idx
-                    == chunks
-                        .iter()
-                        .position(|c| c.hash == chunk_entry.hash)
-                        .unwrap()
-                {
-                    let end = offset + chunk_entry.size as usize;
-                    break &data[offset..end];
-                }
-                offset += chunks[current_chunk_idx].size as usize;
-                current_chunk_idx += 1;
-            };
+            let end = offset + chunk_entry.size as usize;
+            let chunk_data = &data[offset..end];
 
             // Store chunk as blob (with compression if applicable)
+            // Deduplication happens automatically in put_blob_whole
             self.put_blob_whole(chunk_data)?;
+
+            offset = end;
         }
 
         // Create ChunkList object
