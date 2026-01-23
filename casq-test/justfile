@@ -57,7 +57,7 @@ format:
 lint:
     uv run ruff check tests/ helpers/ fixtures/ conftest.py
 lint-fix:
-    uv run ruff --fix check tests/ helpers/ fixtures/ conftest.py
+    uv run ruff check --fix tests/ helpers/ fixtures/ conftest.py
 
 # Install dependencies
 install:
