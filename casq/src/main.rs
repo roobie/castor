@@ -209,14 +209,14 @@ fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<
         }
 
         // Create reference if requested (points to last hash if multiple paths)
-        if let Some(ref name) = ref_name {
-            if let Some(hash) = last_hash {
-                store
-                    .refs()
-                    .add(name, &hash)
-                    .with_context(|| format!("Failed to create reference: {}", name))?;
-                println!("Created reference: {} -> {}", name, hash);
-            }
+        if let Some(ref name) = ref_name
+            && let Some(hash) = last_hash
+        {
+            store
+                .refs()
+                .add(name, &hash)
+                .with_context(|| format!("Failed to create reference: {}", name))?;
+            println!("Created reference: {} -> {}", name, hash);
         }
     }
 

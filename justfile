@@ -21,6 +21,7 @@ lint:
 
 lint-fix:
 	cargo clippy --all --fix
+	just -f ./casq-test/justfile lint-fix
 
 build: deps lint
 	cargo build
