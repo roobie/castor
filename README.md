@@ -1,5 +1,7 @@
 # `casq`
 
+![casq logo](assets/logo.jpeg)
+
 **A minimal content-addressed file store using BLAKE3.**
 
 `casq` is a single-binary tool for storing files and directories by their cryptographic hash. Think of it as a lightweight git object store or restic backend—but simpler, local-only, and purpose-built for content-addressed storage without the version control overhead.
