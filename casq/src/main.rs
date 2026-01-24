@@ -4,15 +4,22 @@ use clap::{Parser, Subcommand};
 use std::io;
 use std::path::{Path, PathBuf};
 
+mod output;
+use output::*;
+
 /// casq - A content-addressed file store
 #[derive(Parser)]
 #[command(name = "casq")]
 #[command(about = "Content-addressed file store using BLAKE3", long_about = None)]
 #[command(version)]
 struct Cli {
-    /// Store root directory (defaults to CASTOR_ROOT env var or ./casq-store)
+    /// Store root directory (defaults to CASQ_ROOT env var or ./casq-store)
     #[arg(short, long, global = true)]
     root: Option<PathBuf>,
+
+    /// Output results as JSON
+    #[arg(long, global = true)]
+    json: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -120,7 +127,7 @@ enum RefsCommands {
     },
 }
 
-fn main() -> Result<()> {
+fn main() {
     let cli = Cli::parse();
 
     // Determine store root: CLI arg > CASTOR_ROOT env var > ./casq-store default
@@ -129,25 +136,35 @@ fn main() -> Result<()> {
         .or_else(|| std::env::var("CASTOR_ROOT").ok().map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from("./casq-store"));
 
-    match cli.command {
-        Commands::Init { algo } => cmd_init(&root, &algo),
-        Commands::Add { paths, ref_name } => cmd_add(&root, paths, ref_name),
-        Commands::Materialize { hash, dest } => cmd_materialize(&root, &hash, &dest),
-        Commands::Cat { hash } => cmd_cat(&root, &hash),
-        Commands::Ls { hash, long } => cmd_ls(&root, &hash, long),
-        Commands::Stat { hash } => cmd_stat(&root, &hash),
-        Commands::Gc { dry_run } => cmd_gc(&root, dry_run),
-        Commands::Orphans { long } => cmd_orphans(&root, long),
-        Commands::Journal { recent, orphans } => cmd_journal(&root, recent, orphans),
+    // Create output writer
+    let output = OutputWriter::new(cli.json);
+
+    // Execute command and handle errors
+    let result = match cli.command {
+        Commands::Init { algo } => cmd_init(&root, &algo, &output),
+        Commands::Add { paths, ref_name } => cmd_add(&root, paths, ref_name, &output),
+        Commands::Materialize { hash, dest } => cmd_materialize(&root, &hash, &dest, &output),
+        Commands::Cat { hash } => cmd_cat(&root, &hash, &output),
+        Commands::Ls { hash, long } => cmd_ls(&root, &hash, long, &output),
+        Commands::Stat { hash } => cmd_stat(&root, &hash, &output),
+        Commands::Gc { dry_run } => cmd_gc(&root, dry_run, &output),
+        Commands::Orphans { long } => cmd_orphans(&root, long, &output),
+        Commands::Journal { recent, orphans } => cmd_journal(&root, recent, orphans, &output),
         Commands::Refs(refs_cmd) => match refs_cmd {
-            RefsCommands::Add { name, hash } => cmd_refs_add(&root, &name, &hash),
-            RefsCommands::List => cmd_refs_list(&root),
-            RefsCommands::Rm { name } => cmd_refs_rm(&root, &name),
+            RefsCommands::Add { name, hash } => cmd_refs_add(&root, &name, &hash, &output),
+            RefsCommands::List => cmd_refs_list(&root, &output),
+            RefsCommands::Rm { name } => cmd_refs_rm(&root, &name, &output),
         },
+    };
+
+    // Handle errors and set exit code
+    if let Err(e) = result {
+        output.write_error(&e, 1);
+        std::process::exit(1);
     }
 }
 
-fn cmd_init(root: &Path, algo: &str) -> Result<()> {
+fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
     let algorithm = match algo {
         "blake3" => Algorithm::Blake3,
         _ => anyhow::bail!("Unsupported algorithm: {}", algo),
@@ -156,13 +173,25 @@ fn cmd_init(root: &Path, algo: &str) -> Result<()> {
     Store::init(root, algorithm)
         .with_context(|| format!("Failed to initialize store at {}", root.display()))?;
 
-    println!("Initialized casq store at {}", root.display());
-    println!("Algorithm: {}", algorithm.as_str());
+    let data = InitOutput {
+        success: true,
+        result_code: 0,
+        root: root.display().to_string(),
+        algorithm: algorithm.as_str().to_string(),
+    };
+
+    output.write(&data, || {
+        format!(
+            "Initialized casq store at {}\nAlgorithm: {}\n",
+            root.display(),
+            algorithm.as_str()
+        )
+    })?;
 
     Ok(())
 }
 
-fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<()> {
+fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -183,9 +212,16 @@ fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<
         anyhow::bail!("stdin can only be read once per invocation");
     }
 
+    let mut objects = Vec::new();
+    let mut reference = None;
+
     // Process based on mode
     if has_stdin {
         let hash = add_from_stdin(&store)?;
+        objects.push(AddedObject {
+            hash,
+            path: "(stdin)".to_string(),
+        });
 
         // Create reference if requested
         if let Some(ref name) = ref_name {
@@ -193,7 +229,10 @@ fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<
                 .refs()
                 .add(name, &hash)
                 .with_context(|| format!("Failed to create reference: {}", name))?;
-            println!("Created reference: {} -> {}", name, hash);
+            reference = Some(ReferenceCreated {
+                name: name.clone(),
+                hash,
+            });
         }
     } else {
         // Regular filesystem paths
@@ -204,7 +243,10 @@ fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<
                 .add_path(&path)
                 .with_context(|| format!("Failed to add path: {}", path.display()))?;
 
-            println!("{} {}", hash, path.display());
+            objects.push(AddedObject {
+                hash,
+                path: path.display().to_string(),
+            });
             last_hash = Some(hash);
         }
 
@@ -216,9 +258,30 @@ fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>) -> Result<
                 .refs()
                 .add(name, &hash)
                 .with_context(|| format!("Failed to create reference: {}", name))?;
-            println!("Created reference: {} -> {}", name, hash);
+            reference = Some(ReferenceCreated {
+                name: name.clone(),
+                hash,
+            });
         }
     }
+
+    let data = AddOutput {
+        success: true,
+        result_code: 0,
+        objects: objects.clone(),
+        reference: reference.clone(),
+    };
+
+    output.write(&data, || {
+        let mut text = String::new();
+        for obj in &objects {
+            text.push_str(&format!("{} {}\n", obj.hash, obj.path));
+        }
+        if let Some(ref r) = reference {
+            text.push_str(&format!("Created reference: {} -> {}\n", r.name, r.hash));
+        }
+        text
+    })?;
 
     Ok(())
 }
@@ -236,13 +299,10 @@ fn add_from_stdin(store: &Store) -> Result<Hash> {
         .add_stdin(stdin.lock())
         .with_context(|| "Failed to read from stdin")?;
 
-    // Output format: hash with descriptive label
-    println!("{} (stdin)", hash);
-
     Ok(hash)
 }
 
-fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path) -> Result<()> {
+fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -252,12 +312,31 @@ fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path) -> Result<()> {
         .materialize(&hash, dest)
         .with_context(|| format!("Failed to materialize {} to {}", hash, dest.display()))?;
 
-    println!("Materialized {} to {}", hash, dest.display());
+    let data = MaterializeOutput {
+        success: true,
+        result_code: 0,
+        hash,
+        destination: dest.display().to_string(),
+    };
+
+    output.write(&data, || {
+        format!("Materialized {} to {}\n", hash, dest.display())
+    })?;
 
     Ok(())
 }
 
-fn cmd_cat(root: &Path, hash_str: &str) -> Result<()> {
+fn cmd_cat(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
+    if output.is_json() {
+        anyhow::bail!(
+            "The 'cat' command outputs binary data to stdout and cannot be used with --json.\n\
+             Alternatives:\n\
+             - Use 'materialize' to save to a file\n\
+             - Use 'stat' to get metadata\n\
+             - Use 'ls' to list tree contents"
+        );
+    }
+
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -273,7 +352,7 @@ fn cmd_cat(root: &Path, hash_str: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool) -> Result<()> {
+fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -284,23 +363,41 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool) -> Result<()> {
             .list()
             .with_context(|| "Failed to list references")?;
 
-        if refs.is_empty() {
-            println!("No references (use 'casq add --ref-name' to create one)");
-        } else {
-            for (name, hash) in refs {
-                if long {
-                    // Try to determine type
-                    let type_str = if store.get_tree(&hash).is_ok() {
-                        "tree"
+        let ref_infos: Vec<RefInfo> = refs
+            .into_iter()
+            .map(|(name, hash)| RefInfo { name, hash })
+            .collect();
+
+        let data = LsOutput {
+            success: true,
+            result_code: 0,
+            data: LsData::RefList {
+                refs: ref_infos.clone(),
+            },
+        };
+
+        output.write(&data, || {
+            if ref_infos.is_empty() {
+                "No references (use 'casq add --ref-name' to create one)\n".to_string()
+            } else {
+                let mut text = String::new();
+                for r in &ref_infos {
+                    if long {
+                        // Try to determine type
+                        let type_str = if store.get_tree(&r.hash).is_ok() {
+                            "tree"
+                        } else {
+                            "blob"
+                        };
+                        text.push_str(&format!("{} {} -> {}\n", type_str, r.name, r.hash));
                     } else {
-                        "blob"
-                    };
-                    println!("{} {} -> {}", type_str, name, hash);
-                } else {
-                    println!("{} -> {}", name, hash);
+                        text.push_str(&format!("{} -> {}\n", r.name, r.hash));
+                    }
                 }
+                text
             }
-        }
+        })?;
+
         return Ok(());
     }
 
@@ -318,20 +415,46 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool) -> Result<()> {
     match store.get_tree(&hash) {
         Ok(entries) => {
             // It's a tree
-            for entry in entries {
-                if long {
-                    let type_char = match entry.entry_type {
-                        casq_core::EntryType::Blob => 'b',
-                        casq_core::EntryType::Tree => 't',
-                    };
-                    println!(
-                        "{} {:06o} {} {}",
-                        type_char, entry.mode, entry.hash, entry.name
-                    );
-                } else {
-                    println!("{}", entry.name);
+            let entry_infos: Vec<TreeEntryInfo> = entries
+                .iter()
+                .map(|e| TreeEntryInfo {
+                    name: e.name.clone(),
+                    entry_type: match e.entry_type {
+                        casq_core::EntryType::Blob => "blob".to_string(),
+                        casq_core::EntryType::Tree => "tree".to_string(),
+                    },
+                    mode: if long { Some(format!("{:06o}", e.mode)) } else { None },
+                    hash: if long { Some(e.hash) } else { None },
+                })
+                .collect();
+
+            let data = LsOutput {
+                success: true,
+                result_code: 0,
+                data: LsData::TreeContents {
+                    hash,
+                    entries: entry_infos.clone(),
+                },
+            };
+
+            output.write(&data, || {
+                let mut text = String::new();
+                for entry in &entries {
+                    if long {
+                        let type_char = match entry.entry_type {
+                            casq_core::EntryType::Blob => 'b',
+                            casq_core::EntryType::Tree => 't',
+                        };
+                        text.push_str(&format!(
+                            "{} {:06o} {} {}\n",
+                            type_char, entry.mode, entry.hash, entry.name
+                        ));
+                    } else {
+                        text.push_str(&format!("{}\n", entry.name));
+                    }
                 }
-            }
+                text
+            })?;
         }
         Err(_) => {
             // Try as blob
@@ -339,18 +462,29 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool) -> Result<()> {
                 .get_blob(&hash)
                 .with_context(|| format!("Failed to read object {}", hash))?;
 
-            if long {
-                println!("blob {} bytes", blob.len());
-            } else {
-                println!("blob");
-            }
+            let data = LsOutput {
+                success: true,
+                result_code: 0,
+                data: LsData::BlobInfo(BlobInfo {
+                    hash,
+                    size: blob.len() as u64,
+                }),
+            };
+
+            output.write(&data, || {
+                if long {
+                    format!("blob {} bytes\n", blob.len())
+                } else {
+                    "blob\n".to_string()
+                }
+            })?;
         }
     }
 
     Ok(())
 }
 
-fn cmd_stat(root: &Path, hash_str: &str) -> Result<()> {
+fn cmd_stat(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -368,11 +502,25 @@ fn cmd_stat(root: &Path, hash_str: &str) -> Result<()> {
     // Try to determine type
     match store.get_tree(&hash) {
         Ok(entries) => {
-            println!("Hash: {}", hash);
-            println!("Type: tree");
-            println!("Entries: {}", entries.len()); // TODO: perhaps we need to support --recurse to count recursively.
-            println!("Size: {} bytes (on disk)", metadata.len());
-            println!("Path: {}", obj_path.display());
+            let data = StatOutput {
+                success: true,
+                result_code: 0,
+                data: StatData::Tree(TreeStatInfo {
+                    hash,
+                    entry_count: entries.len(),
+                    path: obj_path.display().to_string(),
+                }),
+            };
+
+            output.write(&data, || {
+                format!(
+                    "Hash: {}\nType: tree\nEntries: {}\nSize: {} bytes (on disk)\nPath: {}\n",
+                    hash,
+                    entries.len(),
+                    metadata.len(),
+                    obj_path.display()
+                )
+            })?;
         }
         Err(_) => {
             // It's a blob
@@ -380,18 +528,33 @@ fn cmd_stat(root: &Path, hash_str: &str) -> Result<()> {
                 .get_blob(&hash)
                 .with_context(|| "Failed to read blob")?;
 
-            println!("Hash: {}", hash);
-            println!("Type: blob");
-            println!("Size: {} bytes", blob.len());
-            println!("Size (on disk): {} bytes", metadata.len());
-            println!("Path: {}", obj_path.display());
+            let data = StatOutput {
+                success: true,
+                result_code: 0,
+                data: StatData::Blob(BlobStatInfo {
+                    hash,
+                    size: blob.len() as u64,
+                    size_on_disk: metadata.len(),
+                    path: obj_path.display().to_string(),
+                }),
+            };
+
+            output.write(&data, || {
+                format!(
+                    "Hash: {}\nType: blob\nSize: {} bytes\nSize (on disk): {} bytes\nPath: {}\n",
+                    hash,
+                    blob.len(),
+                    metadata.len(),
+                    obj_path.display()
+                )
+            })?;
         }
     }
 
     Ok(())
 }
 
-fn cmd_gc(root: &Path, dry_run: bool) -> Result<()> {
+fn cmd_gc(root: &Path, dry_run: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -399,19 +562,32 @@ fn cmd_gc(root: &Path, dry_run: bool) -> Result<()> {
         .gc(dry_run)
         .with_context(|| "Failed to run garbage collection")?;
 
-    if dry_run {
-        println!("Dry run - no objects deleted");
-        println!("Would delete {} objects", stats.objects_deleted);
-        println!("Would free {} bytes", stats.bytes_freed);
-    } else {
-        println!("Deleted {} objects", stats.objects_deleted);
-        println!("Freed {} bytes", stats.bytes_freed);
-    }
+    let data = GcOutput {
+        success: true,
+        result_code: 0,
+        dry_run,
+        objects_deleted: stats.objects_deleted,
+        bytes_freed: stats.bytes_freed,
+    };
+
+    output.write(&data, || {
+        if dry_run {
+            format!(
+                "Dry run - no objects deleted\nWould delete {} objects\nWould free {} bytes\n",
+                stats.objects_deleted, stats.bytes_freed
+            )
+        } else {
+            format!(
+                "Deleted {} objects\nFreed {} bytes\n",
+                stats.objects_deleted, stats.bytes_freed
+            )
+        }
+    })?;
 
     Ok(())
 }
 
-fn cmd_orphans(root: &Path, long: bool) -> Result<()> {
+fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -419,27 +595,38 @@ fn cmd_orphans(root: &Path, long: bool) -> Result<()> {
         .find_orphan_roots()
         .with_context(|| "Failed to find orphan roots")?;
 
-    if orphans.is_empty() {
-        println!("No orphaned tree roots found");
-        return Ok(());
-    }
+    let orphan_infos: Vec<OrphanInfo> = orphans.iter().map(|o| o.clone().into()).collect();
 
-    for orphan in orphans {
-        if long {
-            println!("Hash: {}", orphan.hash);
-            println!("Type: tree");
-            println!("Entries: {}", orphan.entry_count);
-            println!("Approx size: {} bytes", orphan.approx_size);
-            println!("---");
+    let data = OrphansOutput {
+        success: true,
+        result_code: 0,
+        orphans: orphan_infos.clone(),
+    };
+
+    output.write(&data, || {
+        if orphan_infos.is_empty() {
+            "No orphaned tree roots found\n".to_string()
         } else {
-            println!("{}  {} entries", orphan.hash, orphan.entry_count);
+            let mut text = String::new();
+            for orphan in &orphan_infos {
+                if long {
+                    text.push_str(&format!("Hash: {}\n", orphan.hash));
+                    text.push_str("Type: tree\n");
+                    text.push_str(&format!("Entries: {}\n", orphan.entry_count));
+                    text.push_str(&format!("Approx size: {} bytes\n", orphan.approx_size));
+                    text.push_str("---\n");
+                } else {
+                    text.push_str(&format!("{}  {} entries\n", orphan.hash, orphan.entry_count));
+                }
+            }
+            text
         }
-    }
+    })?;
 
     Ok(())
 }
 
-fn cmd_journal(root: &Path, recent: Option<usize>, orphans: bool) -> Result<()> {
+fn cmd_journal(root: &Path, recent: Option<usize>, orphans: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -462,31 +649,62 @@ fn cmd_journal(root: &Path, recent: Option<usize>, orphans: bool) -> Result<()> 
             .with_context(|| "Failed to read journal entries")?
     };
 
-    if entries.is_empty() {
-        if orphans {
-            println!("No orphaned journal entries found");
+    let entry_infos: Vec<JournalEntryInfo> = entries
+        .iter()
+        .map(|e| {
+            let datetime = chrono::DateTime::from_timestamp(e.timestamp, 0)
+                .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+            let timestamp_human = datetime.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+
+            JournalEntryInfo {
+                timestamp: e.timestamp as u64,
+                timestamp_human,
+                operation: e.operation.clone(),
+                hash: e.hash,
+                path: e.path.clone(),
+                metadata: if e.metadata.is_empty() {
+                    None
+                } else {
+                    Some(e.metadata.clone())
+                },
+            }
+        })
+        .collect();
+
+    let data = JournalOutput {
+        success: true,
+        result_code: 0,
+        entries: entry_infos.clone(),
+    };
+
+    output.write(&data, || {
+        if entry_infos.is_empty() {
+            if orphans {
+                "No orphaned journal entries found\n".to_string()
+            } else {
+                "No journal entries\n".to_string()
+            }
         } else {
-            println!("No journal entries");
+            let mut text = String::new();
+            for entry in &entries {
+                // Format timestamp as human-readable
+                let datetime = chrono::DateTime::from_timestamp(entry.timestamp, 0)
+                    .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+                let formatted_time = datetime.format("%Y-%m-%d %H:%M:%S");
+
+                text.push_str(&format!(
+                    "{}  {}  {}  {}  {}\n",
+                    formatted_time, entry.operation, entry.hash, entry.path, entry.metadata
+                ));
+            }
+            text
         }
-        return Ok(());
-    }
-
-    for entry in entries {
-        // Format timestamp as human-readable
-        let datetime = chrono::DateTime::from_timestamp(entry.timestamp, 0)
-            .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
-        let formatted_time = datetime.format("%Y-%m-%d %H:%M:%S");
-
-        println!(
-            "{}  {}  {}  {}  {}",
-            formatted_time, entry.operation, entry.hash, entry.path, entry.metadata
-        );
-    }
+    })?;
 
     Ok(())
 }
 
-fn cmd_refs_add(root: &Path, name: &str, hash_str: &str) -> Result<()> {
+fn cmd_refs_add(root: &Path, name: &str, hash_str: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -497,12 +715,19 @@ fn cmd_refs_add(root: &Path, name: &str, hash_str: &str) -> Result<()> {
         .add(name, &hash)
         .with_context(|| format!("Failed to add reference: {}", name))?;
 
-    println!("{} -> {}", name, hash);
+    let data = RefsAddOutput {
+        success: true,
+        result_code: 0,
+        name: name.to_string(),
+        hash,
+    };
+
+    output.write(&data, || format!("{} -> {}\n", name, hash))?;
 
     Ok(())
 }
 
-fn cmd_refs_list(root: &Path) -> Result<()> {
+fn cmd_refs_list(root: &Path, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -511,18 +736,33 @@ fn cmd_refs_list(root: &Path) -> Result<()> {
         .list()
         .with_context(|| "Failed to list references")?;
 
-    if refs.is_empty() {
-        println!("No references");
-    } else {
-        for (name, hash) in refs {
-            println!("{} -> {}", name, hash);
+    let ref_infos: Vec<RefInfo> = refs
+        .into_iter()
+        .map(|(name, hash)| RefInfo { name, hash })
+        .collect();
+
+    let data = RefsListOutput {
+        success: true,
+        result_code: 0,
+        refs: ref_infos.clone(),
+    };
+
+    output.write(&data, || {
+        if ref_infos.is_empty() {
+            "No references\n".to_string()
+        } else {
+            let mut text = String::new();
+            for r in &ref_infos {
+                text.push_str(&format!("{} -> {}\n", r.name, r.hash));
+            }
+            text
         }
-    }
+    })?;
 
     Ok(())
 }
 
-fn cmd_refs_rm(root: &Path, name: &str) -> Result<()> {
+fn cmd_refs_rm(root: &Path, name: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -531,7 +771,13 @@ fn cmd_refs_rm(root: &Path, name: &str) -> Result<()> {
         .remove(name)
         .with_context(|| format!("Failed to remove reference: {}", name))?;
 
-    println!("Removed reference: {}", name);
+    let data = RefsRmOutput {
+        success: true,
+        result_code: 0,
+        name: name.to_string(),
+    };
+
+    output.write(&data, || format!("Removed reference: {}\n", name))?;
 
     Ok(())
 }

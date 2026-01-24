@@ -45,6 +45,32 @@ casq gc --dry-run                  # Preview
 casq gc                            # Actually delete
 ```
 
+### JSON Output for Automation
+
+All commands support `--json` flag for machine-readable output:
+
+```bash
+# Get structured output for scripting
+casq --json init
+# {"success":true,"result_code":0,"root":"./casq-store","algorithm":"blake3-256"}
+
+# Pipe through jq for processing
+casq --json ls | jq '.refs[].name'
+casq --json add myfile.txt | jq '.objects[0].hash'
+casq --json stat <hash> | jq '{type:.type,size:.size}'
+
+# Use in scripts for automation
+HASH=$(casq --json add data.txt | jq -r '.objects[0].hash')
+casq --json gc --dry-run | jq '{dry_run,objects:. objects_deleted,bytes:.bytes_freed}'
+```
+
+**All JSON responses include**:
+- `success` (boolean) - Whether the operation succeeded
+- `result_code` (number) - Exit code (0 for success, non-zero for errors)
+- Command-specific fields (hashes, counts, paths, etc.)
+
+See [CLI README](casq/README.md) for complete JSON output specification.
+
 ## Use Cases
 
 ### Developer & Build Workflows
@@ -163,10 +189,10 @@ This is a Rust workspace with two crates:
 - **`casq/`** - CLI binary providing the user interface
 
 **Test Coverage:**
-- 92 Rust unit tests (100% pass rate)
+- 120 Rust unit tests (100% pass rate)
 - 23 property tests (generative invariant verification)
-- 248+ Python integration tests
-- Comprehensive coverage of compression, chunking, and all core features
+- 292 Python integration tests (including 26 JSON output tests)
+- Comprehensive coverage of compression, chunking, JSON output, and all core features
 
 ## Documentation
 

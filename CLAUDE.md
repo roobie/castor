@@ -352,6 +352,64 @@ $ casq journal --recent 1
 2026-01-23 10:30:00  add  abc123...  (stdin)  entries=1,size=512
 ```
 
+### JSON Output (v0.6.0+)
+
+**casq** supports machine-readable JSON output via the `--json` global flag, enabling scripting and automation.
+
+**Usage:**
+```bash
+# All commands support --json
+casq --json init
+casq --json add myfile.txt
+casq --json ls
+casq --json gc --dry-run
+
+# Pipe through jq for processing
+casq --json ls | jq '.refs[].name'
+casq --json add file.txt | jq '.objects[0].hash'
+```
+
+**Standard Response Format:**
+
+All JSON responses include:
+- `success: bool` - Whether the operation succeeded
+- `result_code: u8` - Exit code (0 for success, non-zero for errors)
+- Command-specific fields (hashes, counts, paths, etc.)
+
+**Example Outputs:**
+
+```json
+// init
+{"success":true,"result_code":0,"root":"./casq-store","algorithm":"blake3-256"}
+
+// add with reference
+{"success":true,"result_code":0,"objects":[{"hash":"abc123...","path":"file.txt"}],"reference":{"name":"backup","hash":"abc123..."}}
+
+// ls (refs)
+{"success":true,"result_code":0,"type":"RefList","refs":[{"name":"backup","hash":"abc123..."}]}
+
+// gc
+{"success":true,"result_code":0,"dry_run":false,"objects_deleted":42,"bytes_freed":1048576}
+
+// Error (stderr)
+{"success":false,"result_code":1,"error":"Object not found: abc123..."}
+```
+
+**Implementation:**
+- Output abstraction layer in `casq/src/output.rs`
+- DTOs (Data Transfer Objects) for all command responses
+- Serde serialization with custom `Hash` serializer (outputs hex string)
+- Error responses on stderr in JSON mode
+- Exit codes match `result_code` in JSON
+
+**Binary Data Limitation:**
+- `cat` command errors in JSON mode (binary data incompatible with JSON)
+- Use `materialize` or `stat` as alternatives
+
+**Testing:**
+- 26 integration tests in `casq-test/tests/test_json_output.py`
+- Full backward compatibility verified (all existing tests pass)
+
 ### Dependencies
 
 **casq_core:**
@@ -360,6 +418,7 @@ $ casq journal --recent 1
 - `tempfile`: Atomic object writes
 - `ignore`: Filesystem walking with .gitignore support
 - `thiserror`: Error definitions
+- `serde`: Serialization for JSON output (v0.6.0+)
 - `zstd`: Transparent zstd compression (v0.4.0+)
 - `fastcdc`: Content-defined chunking (v0.4.0+)
 
@@ -368,6 +427,8 @@ $ casq journal --recent 1
 - `clap`: CLI argument parsing with derive macros
 - `anyhow`: Error handling in main
 - `atty`: TTY detection for stdin validation
+- `serde`: Serialization support (v0.6.0+)
+- `serde_json`: JSON serialization (v0.6.0+)
 
 ## Design Principles
 
@@ -450,7 +511,7 @@ When implementing new features:
 
 ## Current Implementation Status
 
-### Core Features (v0.4.0)
+### Core Features (v0.6.0)
 
 **Storage Engine:**
 - ✅ Content-addressed storage with BLAKE3 hashing
@@ -468,7 +529,7 @@ When implementing new features:
 
 **Commands:**
 - ✅ `init` - Initialize new store
-- ✅ `add` - Add files/directories to store
+- ✅ `add` - Add files/directories to store (supports stdin with `-`)
 - ✅ `materialize` - Restore files from store
 - ✅ `cat` - Output blob content to stdout
 - ✅ `ls` - List tree contents
@@ -477,29 +538,32 @@ When implementing new features:
 - ✅ `orphans` - Find unreferenced tree roots
 - ✅ `journal` - View operation history
 - ✅ `refs` - Manage named references
+- ✅ `--json` - JSON output for all commands (v0.6.0+)
 
 **Test Coverage:**
-- ✅ 92 Rust unit tests (100% pass rate)
-- ✅ 248+ Python integration tests
+- ✅ 120 Rust unit tests (100% pass rate)
+- ✅ 292 Python integration tests (including 26 JSON output tests)
 - ✅ Compression threshold tests
 - ✅ Chunking boundary tests
 - ✅ Round-trip integrity tests
 - ✅ Deduplication tests (whole files and chunks)
 - ✅ GC correctness with all object types
 - ✅ Backward compatibility tests
+- ✅ JSON output format tests
 
 **Module Organization:**
 - `casq_core/src/lib.rs` - Library exports
-- `casq_core/src/hash.rs` - BLAKE3 hashing
+- `casq_core/src/hash.rs` - BLAKE3 hashing (with Serialize support)
 - `casq_core/src/object.rs` - Object types and encoding (~350 lines)
 - `casq_core/src/store.rs` - Storage engine with compression/chunking (~500 lines)
 - `casq_core/src/chunking.rs` - FastCDC integration (~150 lines)
 - `casq_core/src/tree.rs` - Tree utilities
-- `casq_core/src/gc.rs` - Garbage collection
+- `casq_core/src/gc.rs` - Garbage collection (with Serialize support)
 - `casq_core/src/walk.rs` - Filesystem walking
 - `casq_core/src/journal.rs` - Operation journal
 - `casq_core/src/error.rs` - Error types
 - `casq/src/main.rs` - CLI implementation
+- `casq/src/output.rs` - JSON output abstraction and DTOs (~300 lines)
 
 ### Known Limitations (By Design)
 

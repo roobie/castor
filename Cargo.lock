@@ -178,6 +178,7 @@ dependencies = [
  "hex",
  "ignore",
  "proptest",
+ "serde",
  "tempfile",
  "thiserror",
  "zstd",

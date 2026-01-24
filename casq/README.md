@@ -450,6 +450,198 @@ Caused by:
 - **Cross-file deduplication**: Shared content across files stored only once
 - **Example**: 10 files with identical 5MB section = 5MB stored (not 50MB)
 
+## JSON Output
+
+All commands support the `--json` flag for machine-readable output, enabling scripting and automation.
+
+### Basic Usage
+
+```bash
+# Get JSON output from any command
+casq --json init
+casq --json add myfile.txt
+casq --json ls
+casq --json gc --dry-run
+
+# Pipe through jq for processing
+casq --json ls | jq '.refs[].name'
+casq --json add file.txt | jq '.objects[0].hash'
+```
+
+### Standard Response Format
+
+All JSON responses include these standard fields:
+- `success` (boolean) - Whether the operation succeeded
+- `result_code` (number) - Exit code (0 for success, non-zero for errors)
+
+### Command-Specific Outputs
+
+#### `init`
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "root": "/path/to/store",
+  "algorithm": "blake3-256"
+}
+```
+
+#### `add`
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "objects": [
+    {"hash": "abc123...", "path": "/path/to/file.txt"}
+  ],
+  "reference": {
+    "name": "myref",
+    "hash": "abc123..."
+  }
+}
+```
+
+#### `ls` (refs list)
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "type": "RefList",
+  "refs": [
+    {"name": "backup", "hash": "abc123..."}
+  ]
+}
+```
+
+#### `ls <hash>` (tree contents)
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "type": "TreeContents",
+  "hash": "abc123...",
+  "entries": [
+    {
+      "name": "file.txt",
+      "entry_type": "blob",
+      "mode": "100644",
+      "hash": "def456..."
+    }
+  ]
+}
+```
+
+#### `stat <hash>` (blob)
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "type": "Blob",
+  "hash": "abc123...",
+  "size": 1024,
+  "size_on_disk": 512,
+  "path": "/store/objects/blake3-256/ab/c123..."
+}
+```
+
+#### `gc`
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "dry_run": false,
+  "objects_deleted": 42,
+  "bytes_freed": 1048576
+}
+```
+
+#### `orphans`
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "orphans": [
+    {
+      "hash": "abc123...",
+      "entry_count": 15,
+      "approx_size": 1024
+    }
+  ]
+}
+```
+
+#### `journal`
+```json
+{
+  "success": true,
+  "result_code": 0,
+  "entries": [
+    {
+      "timestamp": 1737556252,
+      "timestamp_human": "2026-01-22T14:30:52Z",
+      "operation": "add",
+      "hash": "abc123...",
+      "path": "/data",
+      "metadata": "entries=15,size=1024"
+    }
+  ]
+}
+```
+
+#### Error Response (stderr)
+```json
+{
+  "success": false,
+  "result_code": 1,
+  "error": "Object not found: abc123..."
+}
+```
+
+### Scripting Examples
+
+```bash
+# Extract hash from add operation
+HASH=$(casq --json add data.txt | jq -r '.objects[0].hash')
+
+# Count orphaned objects
+COUNT=$(casq --json orphans | jq '.orphans | length')
+
+# List all reference names
+casq --json ls | jq -r '.refs[].name'
+
+# Get GC stats
+casq --json gc --dry-run | jq '{objects:.objects_deleted, bytes:.bytes_freed}'
+
+# Check if operation succeeded
+if casq --json add file.txt | jq -e '.success' > /dev/null; then
+  echo "Success"
+else
+  echo "Failed"
+fi
+
+# Process journal entries
+casq --json journal | jq -r '.entries[] | "\(.timestamp_human) \(.operation) \(.path)"'
+```
+
+### Exit Codes
+
+Program exit codes match the `result_code` field in JSON output:
+- `0` - Success
+- `1` - Error (details in `error` field for JSON, or stderr for text)
+
+### Binary Data Limitation
+
+The `cat` command outputs binary data to stdout and cannot be used with `--json`. Use `materialize` or `stat` instead:
+
+```bash
+# This will error with JSON
+casq --json cat <hash>  # Error: binary data incompatible with JSON
+
+# Use these alternatives
+casq --json materialize <hash> ./output  # Save to file
+casq --json stat <hash>                  # Get metadata
+```
+
 ## Limitations
 
 - **No encryption** - Store plaintext only (planned for future)

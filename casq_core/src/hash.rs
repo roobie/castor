@@ -1,6 +1,7 @@
 //! Hashing functionality using BLAKE3.
 
 use crate::error::{Error, Result};
+use serde::{Serialize, Serializer};
 use std::fmt;
 use std::io::Read;
 use std::path::Path;
@@ -9,9 +10,11 @@ use std::path::Path;
 pub const HASH_SIZE: usize = 32;
 
 /// Supported hash algorithms.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Algorithm {
     /// BLAKE3 with 256-bit output.
+    #[serde(rename = "blake3-256")]
     Blake3,
 }
 
@@ -50,6 +53,15 @@ impl Algorithm {
 /// A 32-byte BLAKE3 hash digest.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash([u8; HASH_SIZE]);
+
+impl Serialize for Hash {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_hex())
+    }
+}
 
 impl Hash {
     /// Create a Hash from raw bytes.

@@ -4,11 +4,12 @@ use crate::error::Result;
 use crate::hash::Hash;
 use crate::object::ObjectType;
 use crate::store::Store;
+use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
 
 /// Statistics from a garbage collection run.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct GcStats {
     /// Number of objects deleted.
     pub objects_deleted: usize,
@@ -17,7 +18,7 @@ pub struct GcStats {
 }
 
 /// Information about an orphaned tree root.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct OrphanRoot {
     /// Hash of the orphaned tree.
     pub hash: Hash,
