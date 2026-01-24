@@ -45,11 +45,7 @@ impl OutputWriter {
     ///
     /// The `text_fn` closure is called only in text mode to generate the
     /// human-readable output.
-    pub fn write<T: Serialize>(
-        &self,
-        data: &T,
-        text_fn: impl FnOnce() -> String,
-    ) -> Result<()> {
+    pub fn write<T: Serialize>(&self, data: &T, text_fn: impl FnOnce() -> String) -> Result<()> {
         match self.format {
             OutputFormat::Json => {
                 let json = serde_json::to_string_pretty(data)?;
@@ -171,8 +167,13 @@ pub struct BlobInfo {
 #[derive(Debug, Serialize)]
 #[serde(tag = "type")]
 pub enum LsData {
-    RefList { refs: Vec<RefInfo> },
-    TreeContents { hash: Hash, entries: Vec<TreeEntryInfo> },
+    RefList {
+        refs: Vec<RefInfo>,
+    },
+    TreeContents {
+        hash: Hash,
+        entries: Vec<TreeEntryInfo>,
+    },
     BlobInfo(BlobInfo),
 }
 

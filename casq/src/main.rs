@@ -191,7 +191,12 @@ fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_add(root: &Path, paths: Vec<String>, ref_name: Option<String>, output: &OutputWriter) -> Result<()> {
+fn cmd_add(
+    root: &Path,
+    paths: Vec<String>,
+    ref_name: Option<String>,
+    output: &OutputWriter,
+) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -423,7 +428,11 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool, output: &OutputWri
                         casq_core::EntryType::Blob => "blob".to_string(),
                         casq_core::EntryType::Tree => "tree".to_string(),
                     },
-                    mode: if long { Some(format!("{:06o}", e.mode)) } else { None },
+                    mode: if long {
+                        Some(format!("{:06o}", e.mode))
+                    } else {
+                        None
+                    },
                     hash: if long { Some(e.hash) } else { None },
                 })
                 .collect();
@@ -616,7 +625,10 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
                     text.push_str(&format!("Approx size: {} bytes\n", orphan.approx_size));
                     text.push_str("---\n");
                 } else {
-                    text.push_str(&format!("{}  {} entries\n", orphan.hash, orphan.entry_count));
+                    text.push_str(&format!(
+                        "{}  {} entries\n",
+                        orphan.hash, orphan.entry_count
+                    ));
                 }
             }
             text
@@ -626,7 +638,12 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_journal(root: &Path, recent: Option<usize>, orphans: bool, output: &OutputWriter) -> Result<()> {
+fn cmd_journal(
+    root: &Path,
+    recent: Option<usize>,
+    orphans: bool,
+    output: &OutputWriter,
+) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
