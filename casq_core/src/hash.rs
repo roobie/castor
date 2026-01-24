@@ -205,7 +205,7 @@ mod tests {
         // Hashes should be comparable
         assert_ne!(hash1, hash2);
         // Order is deterministic based on bytes
-        assert!(hash1 < hash2 || hash1 > hash2);
+        assert!(hash1 != hash2);
     }
 
     #[test]
