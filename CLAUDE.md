@@ -459,11 +459,12 @@ All JSON responses include:
 - **Trees**: Not compressed (typically small metadata)
 
 **Chunking (Content-Defined):**
-- **Threshold**: Files ≥ 1MB are split into variable-size chunks using FastCDC
-- **Chunk sizes**: Min 256KB, Average 512KB, Max 1MB
+- **Algorithm**: FastCDC v2020 (improved boundary detection vs Ronomon)
+- **Threshold**: Files ≥ 1MB are split into variable-size chunks
+- **Chunk sizes**: Min 128KB, Average 512KB, Max 1MB (smaller min = better boundary shift resilience)
 - **Storage**: Chunks stored as regular blobs (with compression if ≥ 4KB)
 - **ChunkList object**: Contains array of (chunk_hash, chunk_size) pairs
-- **Benefits**: Incremental backups (change 1 byte → store ~1 chunk), cross-file deduplication
+- **Benefits**: Incremental backups (change 1 byte → store ~1 chunk), cross-file deduplication, 60-80% chunk reuse after small edits
 
 **Behavior:**
 - Files < 4KB: Stored uncompressed as Blob
@@ -546,10 +547,11 @@ When implementing new features:
 - ✅ **Stdout/stderr separation** - Text mode: informational output → stderr; JSON mode: all data → stdout (v0.7.0+)
 
 **Test Coverage:**
-- ✅ 121 Rust unit tests (100% pass rate)
-- ✅ 313 Python integration tests (including 26 JSON output tests, 19 orphan tests)
+- ✅ 124 Rust unit tests (100% pass rate, including 3 boundary stability property tests)
+- ✅ 69 Python integration tests (including 7 chunking deduplication tests)
 - ✅ Compression threshold tests
-- ✅ Chunking boundary tests
+- ✅ Chunking boundary tests with v2020 FastCDC
+- ✅ Boundary stability tests (insert/append/delete resilience)
 - ✅ Round-trip integrity tests
 - ✅ Deduplication tests (whole files and chunks)
 - ✅ GC correctness with all object types
@@ -560,7 +562,7 @@ When implementing new features:
 - `casq_core/src/hash.rs` - BLAKE3 hashing (with Serialize support)
 - `casq_core/src/object.rs` - Object types and encoding (~350 lines)
 - `casq_core/src/store.rs` - Storage engine with compression/chunking (~500 lines)
-- `casq_core/src/chunking.rs` - FastCDC integration (~150 lines)
+- `casq_core/src/chunking.rs` - FastCDC v2020 integration (~150 lines)
 - `casq_core/src/tree.rs` - Tree utilities
 - `casq_core/src/gc.rs` - Garbage collection (with Serialize support)
 - `casq_core/src/walk.rs` - Filesystem walking

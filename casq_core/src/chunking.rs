@@ -18,20 +18,25 @@ pub struct ChunkerConfig {
 impl Default for ChunkerConfig {
     fn default() -> Self {
         Self {
-            min_size: 256 * 1024,  // 256 KB
+            min_size: 128 * 1024,  // 128 KB (reduced for better deduplication)
             avg_size: 512 * 1024,  // 512 KB
             max_size: 1024 * 1024, // 1 MB
         }
     }
 }
 
-/// Chunk a file into content-defined chunks using FastCDC.
+/// Chunk a file into content-defined chunks using FastCDC v2020.
 ///
 /// Returns a list of chunk entries with hashes and sizes.
 pub fn chunk_file(data: &[u8], config: &ChunkerConfig) -> Result<Vec<ChunkEntry>> {
-    use fastcdc::ronomon::FastCDC;
+    use fastcdc::v2020::FastCDC;
 
-    let chunker = FastCDC::new(data, config.min_size, config.avg_size, config.max_size);
+    let chunker = FastCDC::new(
+        data,
+        config.min_size as u32,
+        config.avg_size as u32,
+        config.max_size as u32,
+    );
 
     let mut chunks = Vec::new();
     for chunk in chunker {
@@ -228,6 +233,137 @@ mod tests {
                 total_size,
                 data.len() as u64,
                 "Total chunk size must equal input size"
+            );
+        }
+
+        /// Property 18: Boundary stability after small insertion at start
+        /// When inserting a small amount of data at the start of a file,
+        /// most chunks should remain identical (boundary shift resilience)
+        #[test]
+        fn prop_boundary_stability_after_insert(
+            original_data in prop::collection::vec(any::<u8>(), 2_000_000..3_000_000),
+            insert_data in prop::collection::vec(any::<u8>(), 100..5_000)
+        ) {
+            let config = ChunkerConfig::default();
+
+            // Chunk the original data
+            let original_chunks = chunk_file(&original_data, &config)?;
+
+            // Create modified data with insertion at start
+            let mut modified_data = insert_data.clone();
+            modified_data.extend_from_slice(&original_data);
+
+            // Chunk the modified data
+            let modified_chunks = chunk_file(&modified_data, &config)?;
+
+            // Count how many chunks from original appear in modified
+            let mut matching_chunks = 0;
+            for orig_chunk in &original_chunks {
+                if modified_chunks.iter().any(|mod_chunk| mod_chunk.hash == orig_chunk.hash) {
+                    matching_chunks += 1;
+                }
+            }
+
+            // With good boundary detection, we should see significant chunk reuse
+            // (at least 30% of chunks should be reused with small insertions)
+            let reuse_ratio = matching_chunks as f64 / original_chunks.len() as f64;
+            prop_assert!(
+                reuse_ratio >= 0.30 || original_chunks.len() < 3,
+                "Expected at least 30% chunk reuse after small insertion, got {:.1}% ({}/{} chunks)",
+                reuse_ratio * 100.0,
+                matching_chunks,
+                original_chunks.len()
+            );
+        }
+
+        /// Property 19: Boundary stability when appending data
+        /// When appending data to a file, all prefix chunks should remain identical
+        #[test]
+        fn prop_boundary_stability_after_append(
+            original_data in prop::collection::vec(any::<u8>(), 2_000_000..3_000_000),
+            append_data in prop::collection::vec(any::<u8>(), 500_000..1_000_000)
+        ) {
+            let config = ChunkerConfig::default();
+
+            // Chunk the original data
+            let original_chunks = chunk_file(&original_data, &config)?;
+
+            // Create modified data with append
+            let mut modified_data = original_data.clone();
+            modified_data.extend_from_slice(&append_data);
+
+            // Chunk the modified data
+            let modified_chunks = chunk_file(&modified_data, &config)?;
+
+            // All prefix chunks should be identical (appending doesn't affect earlier boundaries)
+            // Count matching chunks from the prefix
+            let prefix_len = original_chunks.len().saturating_sub(1); // Allow last chunk to differ
+            let mut matching_prefix = 0;
+
+            for i in 0..prefix_len.min(modified_chunks.len()) {
+                if original_chunks[i].hash == modified_chunks[i].hash {
+                    matching_prefix += 1;
+                }
+            }
+
+            // At least 80% of prefix chunks should match
+            let match_ratio = if prefix_len > 0 {
+                matching_prefix as f64 / prefix_len as f64
+            } else {
+                1.0
+            };
+
+            prop_assert!(
+                match_ratio >= 0.80 || prefix_len < 2,
+                "Expected at least 80% prefix chunk preservation after append, got {:.1}% ({}/{} chunks)",
+                match_ratio * 100.0,
+                matching_prefix,
+                prefix_len
+            );
+        }
+
+        /// Property 20: Boundary stability after deletion in middle
+        /// When deleting a small amount of data from the middle,
+        /// chunks before the deletion should remain identical
+        #[test]
+        fn prop_boundary_stability_after_delete(
+            original_data in prop::collection::vec(any::<u8>(), 3_000_000..4_000_000),
+            delete_offset in 1_000_000usize..2_000_000usize,
+            delete_len in 1_000usize..10_000usize
+        ) {
+            let config = ChunkerConfig::default();
+
+            // Chunk the original data
+            let original_chunks = chunk_file(&original_data, &config)?;
+
+            // Create modified data with deletion
+            let delete_end = (delete_offset + delete_len).min(original_data.len());
+            let mut modified_data = Vec::new();
+            modified_data.extend_from_slice(&original_data[..delete_offset]);
+            if delete_end < original_data.len() {
+                modified_data.extend_from_slice(&original_data[delete_end..]);
+            }
+
+            // Chunk the modified data
+            let modified_chunks = chunk_file(&modified_data, &config)?;
+
+            // Count how many chunks from original appear in modified
+            let mut matching_chunks = 0;
+            for orig_chunk in &original_chunks {
+                if modified_chunks.iter().any(|mod_chunk| mod_chunk.hash == orig_chunk.hash) {
+                    matching_chunks += 1;
+                }
+            }
+
+            // With good boundary detection, we should see significant chunk reuse
+            // (at least 40% of chunks should be reused with small deletions)
+            let reuse_ratio = matching_chunks as f64 / original_chunks.len() as f64;
+            prop_assert!(
+                reuse_ratio >= 0.40 || original_chunks.len() < 3,
+                "Expected at least 40% chunk reuse after small deletion, got {:.1}% ({}/{} chunks)",
+                reuse_ratio * 100.0,
+                matching_chunks,
+                original_chunks.len()
             );
         }
     }

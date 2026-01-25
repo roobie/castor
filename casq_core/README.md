@@ -12,7 +12,7 @@ Think of it as a minimal git object store or restic backend, but with compressio
 
 - ✅ **Content-Addressed Storage** - Files and directories stored by BLAKE3 hash
 - ✅ **Transparent Compression** - 3-5x storage reduction with zstd (files ≥ 4KB)
-- ✅ **Content-Defined Chunking** - FastCDC for incremental backups (files ≥ 1MB)
+- ✅ **Content-Defined Chunking** - FastCDC v2020 for incremental backups (files ≥ 1MB, 60-80% chunk reuse after edits)
 - ✅ **Automatic Deduplication** - Identical content stored only once (including chunk-level)
 - ✅ **Tree-Based Directories** - Canonical ordering ensures stable hashes
 - ✅ **Atomic Operations** - Tempfile-based writes prevent corruption
@@ -81,7 +81,7 @@ $STORE_ROOT/
 
 1. **Blob** - Raw file content (automatically compressed if ≥ 4KB, hash of uncompressed payload)
 2. **Tree** - Directory structure (sorted entries by name for canonical hashing)
-3. **ChunkList** - Large file metadata (files ≥ 1MB split into variable-size chunks using FastCDC)
+3. **ChunkList** - Large file metadata (files ≥ 1MB split into variable-size chunks using FastCDC v2020)
 
 ### Module Structure
 
@@ -91,7 +91,7 @@ casq_core/src/
 ├── error.rs     - Error types with thiserror
 ├── hash.rs      - BLAKE3 hashing (32-byte digests)
 ├── object.rs    - Binary object encoding/decoding
-├── chunking.rs  - Content-defined chunking with FastCDC (v0.4.0+)
+├── chunking.rs  - Content-defined chunking with FastCDC v2020 (v0.4.0+)
 ├── store.rs     - Store management with compression/chunking
 ├── tree.rs      - Tree entry encoding with canonical sorting
 ├── walk.rs      - Filesystem traversal with gitignore

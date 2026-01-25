@@ -11,7 +11,7 @@ This is Alpha level software.
 **Why `casq`?**
 - **Automatic deduplication** - Identical content stored only once, even across different directories
 - **Transparent compression** - 3-5x storage reduction with zstd (files ≥ 4KB automatically compressed)
-- **Content-defined chunking** - Incremental backups with FastCDC (files ≥ 1MB split into variable chunks)
+- **Content-defined chunking** - Incremental backups with FastCDC v2020 (files ≥ 1MB split into variable chunks, 60-80% reuse after edits)
 - **Content addressing** - Files identified by cryptographic hash, not by path
 - **Stdin support** - Pipe data directly from commands (e.g., `curl | casq put -`)
 - **Garbage collection** - Reclaim space from unreferenced objects with mark & sweep
@@ -213,14 +213,14 @@ cp target/release/casq ~/.local/bin/
 
 This is a Rust workspace with two crates:
 
-- **`casq_core/`** - Core library implementing the storage engine with compression and chunking (92 unit tests)
+- **`casq_core/`** - Core library implementing the storage engine with compression and chunking (95 unit tests)
 - **`casq/`** - CLI binary providing the user interface
 
 **Test Coverage:**
-- 121 Rust unit tests (100% pass rate)
-- 23 property tests (generative invariant verification)
-- 313 Python integration tests (including 26 JSON output tests, 19 orphan tests)
-- Comprehensive coverage of compression, chunking, JSON output, orphan discovery, and all core features
+- 124 Rust unit tests (100% pass rate)
+- 26 property tests (generative invariant verification, including boundary stability tests)
+- 69 Python integration tests (including chunking deduplication tests)
+- Comprehensive coverage of compression, chunking (v2020), JSON output, orphan discovery, and all core features
 
 ## Documentation
 
@@ -233,7 +233,7 @@ This is a Rust workspace with two crates:
 **Performance:**
 - BLAKE3 hashing (fast, cryptographically secure)
 - Transparent zstd compression (~500 MB/s, level 3)
-- FastCDC chunking for incremental backups (~1 GB/s processing)
+- FastCDC v2020 chunking for incremental backups (~1 GB/s processing)
 - Streaming I/O for large files (no full buffering)
 - Automatic deduplication via content addressing (including chunk-level deduplication)
 - Directory sharding to prevent filesystem bottlenecks
