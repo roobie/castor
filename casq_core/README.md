@@ -20,7 +20,6 @@ Think of it as a minimal git object store or restic backend, but with compressio
 - ✅ **Corruption Detection** - Hash verification on all reads
 - ✅ **Named References** - GC roots for preserving important snapshots
 - ✅ **Full Round-Trip** - Add → Store → GC → Materialize
-- ✅ **Backward Compatible** - v1 objects still readable, no migration required
 - ✅ **Cross-Platform** - Unix permissions preserved, Windows supported
 - ✅ **Gitignore Support** - Respects `.gitignore` during filesystem walks
 
@@ -54,7 +53,7 @@ store.materialize(&hash, Path::new("./restored"))?;
 
 Objects are stored with a 16-byte header followed by the payload.
 
-**v2 format (current, v0.4.0+):**
+**Object format:**
 ```
 0x00  4   "CAFS" magic
 0x04  1   version (u8) = 2
@@ -63,17 +62,6 @@ Objects are stored with a 16-byte header followed by the payload.
 0x07  1   compression: 0=none, 1=zstd
 0x08  8   payload_len (u64 LE) - compressed size if compressed
 0x10  ... payload (possibly compressed)
-```
-
-**v1 format (legacy, still supported):**
-```
-0x00  4   "CAFS" magic
-0x04  1   version (u8) = 1
-0x05  1   type: 1=blob, 2=tree
-0x06  1   algo: 1=blake3-256
-0x07  1   reserved (must be 0)
-0x08  8   payload_len (u64 LE)
-0x10  ... payload
 ```
 
 ### Directory Structure
@@ -102,7 +90,7 @@ casq_core/src/
 ├── lib.rs       - Public API and documentation
 ├── error.rs     - Error types with thiserror
 ├── hash.rs      - BLAKE3 hashing (32-byte digests)
-├── object.rs    - Binary object encoding/decoding (v1 and v2 formats)
+├── object.rs    - Binary object encoding/decoding
 ├── chunking.rs  - Content-defined chunking with FastCDC (v0.4.0+)
 ├── store.rs     - Store management with compression/chunking
 ├── tree.rs      - Tree entry encoding with canonical sorting
@@ -181,9 +169,8 @@ let stats = store.gc(dry_run)?;
 3. **Transparent Optimization** - Compression and chunking automatic, invisible to API consumers
 4. **Atomic Writes** - Use tempfile for corruption-free operations
 5. **Simple Format** - Binary format with clear headers, human-inspectable paths
-6. **Backward Compatible** - v1 objects remain readable, no migration required
-7. **Efficient Storage** - 3-5x compression typical, incremental backups via chunking
-8. **Local-Only** - Single-user design, no network features
+6. **Efficient Storage** - 3-5x compression typical, incremental backups via chunking
+7. **Local-Only** - Single-user design, no network features
 
 ## Hashing Rules
 
@@ -216,7 +203,7 @@ let stats = store.gc(dry_run)?;
 
 **Unit Tests:**
 - **Hash operations** - Encoding, decoding, validation
-- **Object encoding** - Headers, payload, v1/v2 compatibility, compression types
+- **Object encoding** - Headers, payload, compression types
 - **Chunking** - FastCDC boundaries, deterministic chunking, small files
 - **Store operations** - Init, open, blob/tree/chunklist storage, compression
 - **Tree operations** - Canonical ordering, nested structures

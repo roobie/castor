@@ -112,7 +112,6 @@ Key characteristics:
 - Garbage collection for unreferenced objects
 - **Transparent zstd compression** (files ≥ 4KB automatically compressed)
 - **Content-defined chunking** (files ≥ 1MB split into variable chunks for incremental backups)
-- **Full backward compatibility** (v1 and v2 object formats coexist)
 
 ## Project Structure
 
@@ -211,7 +210,7 @@ $STORE_ROOT/
 
 ### On-Disk Format
 
-**Object file header (16 bytes) - v2 (current):**
+**Object file header (16 bytes):**
 ```
 0x00  4   "CAFS" magic
 0x04  1   version (u8) = 2
@@ -220,17 +219,6 @@ $STORE_ROOT/
 0x07  1   compression: 0=none, 1=zstd
 0x08  8   payload_len (u64 LE) - compressed size if compressed
 0x10  ... payload (possibly compressed)
-```
-
-**Object file header (16 bytes) - v1 (legacy, still supported):**
-```
-0x00  4   "CAFS" magic
-0x04  1   version (u8) = 1
-0x05  1   type: 1=blob, 2=tree
-0x06  1   algo: 1=blake3-256
-0x07  1   reserved (must be 0)
-0x08  8   payload_len (u64 LE)
-0x10  ... payload (uncompressed)
 ```
 
 **Tree entry format:**
@@ -542,9 +530,6 @@ When implementing new features:
 
 **Object Format:**
 - ✅ v2 format with compression support
-- ✅ Full backward compatibility with v1 objects
-- ✅ Lazy migration (no data migration required)
-- ✅ Mixed v1/v2 stores supported
 
 **Commands:**
 - ✅ `init` - Initialize new store
@@ -568,7 +553,6 @@ When implementing new features:
 - ✅ Round-trip integrity tests
 - ✅ Deduplication tests (whole files and chunks)
 - ✅ GC correctness with all object types
-- ✅ Backward compatibility tests
 - ✅ JSON output format tests
 
 **Module Organization:**

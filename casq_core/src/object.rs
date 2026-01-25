@@ -2,18 +2,6 @@
 //!
 //! Objects are stored with a 16-byte header followed by the payload:
 //!
-//! Version 1 (legacy):
-//! ```text
-//! 0x00  4   "CAFS" magic
-//! 0x04  1   version (u8) = 1
-//! 0x05  1   type: 1=blob, 2=tree
-//! 0x06  1   algo: 1=blake3-256
-//! 0x07  1   reserved (must be 0)
-//! 0x08  8   payload_len (u64 LE)
-//! 0x10  ... payload
-//! ```
-//!
-//! Version 2 (current):
 //! ```text
 //! 0x00  4   "CAFS" magic
 //! 0x04  1   version (u8) = 2
@@ -190,9 +178,9 @@ impl ObjectHeader {
 
         // Parse version
         let version = buf[4];
-        if version != 1 && version != 2 {
+        if version != 2 {
             return Err(Error::invalid_hash(format!(
-                "Unsupported version: {} (expected 1 or 2)",
+                "Unsupported version: {} (expected 2)",
                 version
             )));
         }
@@ -203,19 +191,8 @@ impl ObjectHeader {
         // Parse algorithm
         let algorithm = Algorithm::from_id(buf[6])?;
 
-        // Parse compression byte (v2) or check reserved byte (v1)
-        let compression = if version == 2 {
-            CompressionType::from_u8(buf[7])?
-        } else {
-            // v1: reserved byte must be 0
-            if buf[7] != 0 {
-                return Err(Error::invalid_hash(format!(
-                    "Reserved byte must be 0 for v1, got {}",
-                    buf[7]
-                )));
-            }
-            CompressionType::None
-        };
+        // Parse compression byte
+        let compression = CompressionType::from_u8(buf[7])?;
 
         // Parse payload length
         let mut len_bytes = [0u8; 8];
@@ -233,7 +210,7 @@ impl ObjectHeader {
 
     /// Validate the header.
     pub fn validate(&self) -> Result<()> {
-        if self.version != 1 && self.version != 2 {
+        if self.version != 2 {
             return Err(Error::invalid_hash(format!(
                 "Unsupported version: {}",
                 self.version
@@ -367,10 +344,14 @@ mod tests {
     fn test_header_decode_invalid_version() {
         let mut buf = [0u8; HEADER_SIZE];
         buf[0..4].copy_from_slice(MAGIC);
-        buf[4] = 99; // Invalid version (only 1 and 2 are supported)
+        buf[4] = 99; // Invalid version (only 2 is supported)
         buf[5] = ObjectType::Blob.to_u8();
         buf[6] = Algorithm::Blake3.id();
 
+        assert!(ObjectHeader::decode(&buf).is_err());
+
+        // Version 1 should also be rejected now
+        buf[4] = 1;
         assert!(ObjectHeader::decode(&buf).is_err());
     }
 
@@ -381,19 +362,6 @@ mod tests {
         buf[4] = VERSION;
         buf[5] = 99; // Invalid type
         buf[6] = Algorithm::Blake3.id();
-
-        assert!(ObjectHeader::decode(&buf).is_err());
-    }
-
-    #[test]
-    fn test_header_decode_v1_reserved_nonzero() {
-        // v1 format: reserved byte must be 0
-        let mut buf = [0u8; HEADER_SIZE];
-        buf[0..4].copy_from_slice(MAGIC);
-        buf[4] = 1; // v1
-        buf[5] = ObjectType::Blob.to_u8();
-        buf[6] = Algorithm::Blake3.id();
-        buf[7] = 1; // Reserved byte should be 0 in v1
 
         assert!(ObjectHeader::decode(&buf).is_err());
     }
