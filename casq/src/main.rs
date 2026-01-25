@@ -234,7 +234,7 @@ fn cmd_put(
             path: path.display().to_string(),
         };
 
-        // Create reference if requested (points to last hash if multiple paths)
+        // Create reference if requested
         if let Some(ref name) = ref_name {
             store
                 .refs()

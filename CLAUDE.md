@@ -102,7 +102,7 @@ Before considering any work complete, verify:
 
 ## Project Overview
 
-**casq** (v0.4.0) is a content-addressed file store (CAS) - a production-ready, single-binary system for storing and retrieving files and directories by their cryptographic hash. Think "minimal git object store / restic backend" but with modern compression and chunking.
+**casq** is a content-addressed file store (CAS) - a single-binary system for storing and retrieving files and directories by their cryptographic hash. Think "minimal git object store / restic backend" but with modern compression and chunking.
 
 Key characteristics:
 - Local-only, single-user, no network support
@@ -121,7 +121,7 @@ This is a **Rust workspace** with two crates:
 - `casq_core/`: Core library implementing the storage engine, hashing, compression, chunking, and object management
 - `casq/`: CLI binary that provides the user interface
 
-**Status:** Production-ready with comprehensive test coverage (120 unit tests, 266 integration tests).
+**Status:** Alpha level with comprehensive test coverage.
 
 ## Build and Development Commands
 

@@ -16,7 +16,8 @@
       "Bash(wc:*)",
       "Bash(beans query:*)",
       "Bash(beans create:*)",
-      "Bash(beans update:*)"
+      "Bash(beans update:*)",
+      "Bash(./target/debug/casq:*)"
     ]
   },
   "hooks": {

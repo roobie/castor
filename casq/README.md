@@ -1,6 +1,8 @@
 # `casq`
 
-A production-ready content-addressed file store CLI with compression and chunking (v0.4.0).
+A content-addressed file store CLI with compression and chunking (v0.4.0).
+
+This is Alpha level software.
 
 ## Overview
 
@@ -25,95 +27,92 @@ cp target/release/casq $HOME/.local/bin/
 
 ```bash
 # Initialize a new store
-casq init
+casq initialize
 
 # Add files or directories
-casq add myfile.txt
-casq add mydir/
+casq put myfile.txt
+casq put mydir/
 
-# Add content from stdin (pipe data directly)
-curl https://example.org | casq add --ref-name example-dot-org@20260123 -
-echo "quick note" | casq add --ref-name note-123 -
+# Add content from stdin (pipe data directly) - in most cases you want to use --reference
+curl https://example.org | casq put --reference example-dot-org@20260123 -
+echo "quick note" | casq put --reference note-123 -
 
 # Add with a named reference
-casq add important-data/ --ref-name backup-2024
+casq put important-data/ --reference backup-2024
 
 # Discover what content you have
-casq ls              # Lists all references
-casq ls --long       # With type info
+casq references list              # Lists all references
 
-# List tree contents
-casq ls <hash>
+# List tree contents (requires hash)
+casq list <hash>
 
 # Output blob content
-casq cat <hash>
+casq get <hash>
 
 # Show object metadata
-casq stat <hash>
+casq metadata <hash>
 
 # Materialize (restore) to filesystem
 casq materialize <hash> ./restored
 
 # Garbage collect unreferenced objects
-casq gc --dry-run  # Preview
-casq gc            # Actually delete
+casq collect-garbage --dry-run  # Preview
+casq collect-garbage            # Actually delete
 ```
 
 ## Commands
 
-### `casq init`
+### `casq initialize`
 
 Initialize a new content-addressed store.
 
 ```bash
-casq init [--algo blake3]
+casq initialize [--algorithm blake3]
 
 Options:
-  --algo <ALGORITHM>  Hash algorithm (default: blake3)
+  -a, --algorithm <ALGORITHM>  Hash algorithm (default: blake3)
 ```
 
 Creates the store directory structure at the configured root (default: `./casq-store`).
 
-### `casq add <PATH>...` or `casq add -`
+### `casq put <PATH>` or `casq put -`
 
 Add files, directories, or stdin content to the store.
 
 ```bash
-casq add <PATH>... [--ref-name <NAME>]
-casq add - [--ref-name <NAME>]
+casq put <PATH> [--reference <NAME>]
+casq put - [--reference <NAME>]
 
 Arguments:
-  <PATH>...  One or more paths to add
-  -          Read content from stdin (cannot mix with filesystem paths)
+  <PATH>  Path to add (a single file or directory), or
+  -       Read content from stdin
 
 Options:
-  --ref-name <NAME>  Create a named reference to the added content
+  --reference <NAME>  Create a named reference to the added content
 ```
 
 **Examples:**
 
 ```bash
 # Add a single file
-casq add document.pdf
+casq put document.pdf
 
-# Add multiple files
-casq add file1.txt file2.txt dir/
+# Add a directory
+casq put project/
 
 # Add with a reference
-casq add project/ --ref-name release-v1.0
+casq put project/ --reference release-v1.0
 
 # Add from stdin
-echo "Hello, World!" | casq add -
-curl https://api.example.com/data | casq add --ref-name api-snapshot -
-cat large-file.bin | casq add --ref-name binary-data -
+echo "Hello, World!" | casq put -
+curl https://api.example.com/data | casq put --reference api-snapshot -
+cat large-file.bin | casq put --reference binary-data -
 ```
 
-The command outputs the hash of each added object. Directories are added recursively and stored as tree objects. Stdin content is stored as a blob.
+The command outputs the hash of the added object. Directories are added recursively and stored as tree objects (and the returned hash is that of the tree itself). Stdin content is stored as a blob.
 
 **Important notes:**
-- When using stdin (`-`), you cannot mix it with filesystem paths
-- Stdin can only be specified once per invocation
-- Output format for stdin: `<hash> (stdin)`
+- Output format on stdout is: `<hash>`
 
 ### `casq materialize <HASH> <DEST>`
 
@@ -137,12 +136,12 @@ casq materialize abc123... ./restored-project
 casq materialize def456... ./document.pdf
 ```
 
-### `casq cat <HASH>`
+### `casq get <HASH>`
 
 Output blob content to stdout.
 
 ```bash
-casq cat <HASH>
+casq get <HASH>
 
 Arguments:
   <HASH>  Hash of the blob
@@ -152,24 +151,24 @@ Arguments:
 
 ```bash
 # View a text file
-casq cat abc123...
+casq get abc123...
 
 # Pipe to another command
-casq cat abc123... | grep "search term"
+casq get abc123... | grep "search term"
 
 # Save to a file
-casq cat abc123... > output.txt
+casq get abc123... > output.txt
 ```
 
-### `casq ls [HASH]`
+### `casq list <HASH>`
 
-List references (if no hash), tree contents, or blob info.
+List tree contents or show blob info.
 
 ```bash
-casq ls [HASH] [--long]
+casq list <HASH> [--long]
 
 Arguments:
-  [HASH]  Hash of the object (optional - lists all refs if omitted)
+  <HASH>  Hash of the object (required)
 
 Options:
   -l, --long  Show detailed information
@@ -178,36 +177,31 @@ Options:
 **Examples:**
 
 ```bash
-# List all references (discover what content you have)
-casq ls
-
-# List all references with type info
-casq ls --long
-
 # List directory contents
-casq ls abc123...
+casq list abc123...
 
 # Show detailed listing with modes and hashes
-casq ls --long abc123...
+casq list --long abc123...
 
-# Output format for refs:
-# my-backup -> abc123...
+# Output format (short):
+# filename.txt
+# subdir
 
-# Output format for trees (--long):
+# Output format (--long):
 # b 100644 <hash> filename.txt
 # t 040755 <hash> subdir
 ```
 
 Type codes: `b` = blob (file), `t` = tree (directory)
 
-**Tip:** Use `casq ls` to discover content, then `casq ls <hash>` to explore it.
+**Tip:** Use `casq references list` to discover content, then `casq list <hash>` to explore it.
 
-### `casq stat <HASH>`
+### `casq metadata <HASH>`
 
 Show detailed metadata about an object.
 
 ```bash
-casq stat <HASH>
+casq metadata <HASH>
 
 Arguments:
   <HASH>  Hash of the object
@@ -223,12 +217,12 @@ Size: 320 bytes (on disk)
 Path: ./casq-store/objects/blake3-256/ab/c123...
 ```
 
-### `casq gc`
+### `casq collect-garbage`
 
 Garbage collect unreferenced objects.
 
 ```bash
-casq gc [--dry-run]
+casq collect-garbage [--dry-run]
 
 Options:
   --dry-run  Show what would be deleted without actually deleting
@@ -238,20 +232,20 @@ Options:
 
 ```bash
 # Preview what would be deleted
-casq gc --dry-run
+casq collect-garbage --dry-run
 
 # Actually delete unreferenced objects
-casq gc
+casq collect-garbage
 ```
 
 Walks from all named references and deletes objects that are no longer reachable.
 
-### `casq refs add <NAME> <HASH>`
+### `casq references add <NAME> <HASH>`
 
 Add a named reference to an object.
 
 ```bash
-casq refs add <NAME> <HASH>
+casq references add <NAME> <HASH>
 
 Arguments:
   <NAME>  Reference name
@@ -261,18 +255,18 @@ Arguments:
 **Examples:**
 
 ```bash
-casq refs add backup-2024 abc123...
-casq refs add important def456...
+casq references add backup-2024 abc123...
+casq references add important def456...
 ```
 
-References act as GC roots - objects reachable from references won't be deleted by `gc`.
+References act as GC roots - objects reachable from references won't be deleted by `collect-garbage`.
 
-### `casq refs list`
+### `casq references list`
 
 List all references.
 
 ```bash
-casq refs list
+casq references list
 ```
 
 **Example output:**
@@ -282,12 +276,12 @@ backup-2024 -> abc123...
 important -> def456...
 ```
 
-### `casq refs rm <NAME>`
+### `casq references remove <NAME>`
 
 Remove a reference.
 
 ```bash
-casq refs rm <NAME>
+casq references remove <NAME>
 
 Arguments:
   <NAME>  Reference name to remove
@@ -296,7 +290,7 @@ Arguments:
 **Example:**
 
 ```bash
-casq refs rm old-backup
+casq references remove old-backup
 ```
 
 ## Global Options
@@ -314,21 +308,21 @@ All commands support these global options:
 The store root is determined in this order:
 
 1. `--root` CLI argument
-2. `CASTOR_ROOT` environment variable
+2. `CASQ_ROOT` environment variable
 3. `./casq-store` (default)
 
 **Examples:**
 
 ```bash
 # Use explicit root
-casq --root /backup/store add myfile.txt
+casq --root /backup/store put myfile.txt
 
 # Use environment variable
-export CASTOR_ROOT=/backup/store
-casq add myfile.txt
+export CASQ_ROOT=/backup/store
+casq put myfile.txt
 
 # Use default (./casq-store)
-casq add myfile.txt
+casq put myfile.txt
 ```
 
 ## Output Streams
@@ -349,15 +343,15 @@ casq add myfile.txt
 
 ```bash
 # Text mode - output on stderr
-casq add file.txt 2>&1 | awk '{print $1}'  # Extract hash
-casq refs list 2>&1 | grep myref            # Filter refs
+casq put file.txt                  # Extract hash
+casq references list | grep myref  # Filter refs
 
 # Suppress informational messages
-casq init 2>/dev/null
+casq initialize 2>/dev/null
 
 # JSON mode - output on stdout (recommended for scripts)
-HASH=$(casq --json add file.txt | jq -r '.objects[0].hash')
-casq --json ls | jq '.refs[].name'
+HASH=$(casq --json put file.txt | jq -r '.object.hash')
+casq --json references list | jq '.refs[].name
 ```
 
 **For scripting**: Use `--json` flag for reliable, machine-readable output.
@@ -368,33 +362,33 @@ casq --json ls | jq '.refs[].name'
 
 ```bash
 # Initialize store
-casq init
+casq initialize
 
 # Create initial backup
-casq add ~/important-data --ref-name backup-$(date +%Y%m%d)
+casq put ~/important-data --reference backup-$(date +%Y%m%d)
 
 # Add more data later
-casq add ~/important-data --ref-name backup-$(date +%Y%m%d)
+casq put ~/important-data --reference backup-$(date +%Y%m%d)
 
 # List all backups
-casq refs list
+casq references list
 
 # Restore a backup
 casq materialize <hash> ~/restored-data
 
 # Clean up old backups
-casq refs rm backup-20240101
-casq gc
+casq references remove backup-20240101
+casq collect-garbage
 ```
 
 ### Deduplication Example
 
 ```bash
 # Add the same file twice
-casq add file.txt
+casq put file.txt
 # Output: abc123...
 
-casq add file.txt
+casq put file.txt
 # Output: abc123... (same hash - deduplicated!)
 
 # Only one copy stored internally
@@ -404,19 +398,19 @@ casq add file.txt
 
 ```bash
 # Add a directory with a reference
-casq add myproject/ --ref-name current-work
+casq put myproject/ --reference current-work
 
 # Discover what's in your store
-casq ls
+casq references list
 # Output: current-work -> abc123...
 
 # Explore the tree
-HASH=$(casq ls | head -1 | awk '{print $3}')
-casq ls $HASH
+HASH=$(casq references list --json | jq '.[0].name')
+casq list $HASH
 
 # Look at a specific file
-FILE_HASH=$(casq ls --long $HASH | grep "README.md" | awk '{print $3}')
-casq cat $FILE_HASH
+FILE_HASH=$(casq list --json --long $HASH | jq '.entries[] | select(.name == "README.md") | .hash' )
+casq get $FILE_HASH
 ```
 
 ## Store Structure
@@ -449,17 +443,17 @@ Trees reference other blobs and trees, forming a hierarchical structure similar 
 
 ## Environment Variables
 
-- `CASTOR_ROOT` - Default store root directory
+- `CASQ_ROOT` - Default store root directory
 
 ## Error Handling
 
 All commands provide clear error messages:
 
 ```bash
-$ casq cat invalid-hash
+$ casq get invalid-hash
 Error: Invalid hash: invalid-hash
 
-$ casq add /nonexistent
+$ casq put /nonexistent
 Error: Failed to add path: /nonexistent
 Caused by:
     No such file or directory (os error 2)
@@ -489,14 +483,14 @@ All commands support the `--json` flag for machine-readable output, enabling scr
 
 ```bash
 # Get JSON output from any command
-casq --json init
-casq --json add myfile.txt
-casq --json ls
-casq --json gc --dry-run
+casq --json initialize
+casq --json put myfile.txt
+casq --json references list
+casq --json collect-garbage --dry-run
 
 # Pipe through jq for processing
-casq --json ls | jq '.refs[].name'
-casq --json add file.txt | jq '.objects[0].hash'
+casq --json references list | jq '.refs[].name'
+casq --json put file.txt | jq '.object.hash'
 ```
 
 ### Standard Response Format
@@ -507,7 +501,7 @@ All JSON responses include these standard fields:
 
 ### Command-Specific Outputs
 
-#### `init`
+#### `initialize`
 ```json
 {
   "success": true,
@@ -517,7 +511,7 @@ All JSON responses include these standard fields:
 }
 ```
 
-#### `add`
+#### `put`
 ```json
 {
   "success": true,
@@ -532,7 +526,7 @@ All JSON responses include these standard fields:
 }
 ```
 
-#### `ls` (refs list)
+#### `references list`
 ```json
 {
   "success": true,
@@ -544,7 +538,7 @@ All JSON responses include these standard fields:
 }
 ```
 
-#### `ls <hash>` (tree contents)
+#### `list <hash>` (tree contents)
 ```json
 {
   "success": true,
@@ -562,7 +556,7 @@ All JSON responses include these standard fields:
 }
 ```
 
-#### `stat <hash>` (blob)
+#### `metadata <hash>` (blob)
 ```json
 {
   "success": true,
@@ -575,7 +569,7 @@ All JSON responses include these standard fields:
 }
 ```
 
-#### `gc`
+#### `collect-garbage`
 ```json
 {
   "success": true,
@@ -586,7 +580,7 @@ All JSON responses include these standard fields:
 }
 ```
 
-#### `orphans`
+#### `find-orphans`
 ```json
 {
   "success": true,
@@ -596,24 +590,6 @@ All JSON responses include these standard fields:
       "hash": "abc123...",
       "entry_count": 15,
       "approx_size": 1024
-    }
-  ]
-}
-```
-
-#### `journal`
-```json
-{
-  "success": true,
-  "result_code": 0,
-  "entries": [
-    {
-      "timestamp": 1737556252,
-      "timestamp_human": "2026-01-22T14:30:52Z",
-      "operation": "add",
-      "hash": "abc123...",
-      "path": "/data",
-      "metadata": "entries=15,size=1024"
     }
   ]
 }
@@ -631,27 +607,24 @@ All JSON responses include these standard fields:
 ### Scripting Examples
 
 ```bash
-# Extract hash from add operation
-HASH=$(casq --json add data.txt | jq -r '.objects[0].hash')
+# Extract hash from put operation
+HASH=$(casq --json put data.txt | jq -r '.objects[0].hash')
 
 # Count orphaned objects
-COUNT=$(casq --json orphans | jq '.orphans | length')
+COUNT=$(casq --json find-orphans | jq '.orphans | length')
 
 # List all reference names
-casq --json ls | jq -r '.refs[].name'
+casq --json references list | jq -r '.refs[].name'
 
 # Get GC stats
-casq --json gc --dry-run | jq '{objects:.objects_deleted, bytes:.bytes_freed}'
+casq --json collect-garbage --dry-run | jq '{objects:.objects_deleted, bytes:.bytes_freed}'
 
 # Check if operation succeeded
-if casq --json add file.txt | jq -e '.success' > /dev/null; then
+if casq --json put file.txt | jq -e '.success' > /dev/null; then
   echo "Success"
 else
   echo "Failed"
 fi
-
-# Process journal entries
-casq --json journal | jq -r '.entries[] | "\(.timestamp_human) \(.operation) \(.path)"'
 ```
 
 ### Exit Codes
@@ -662,37 +635,37 @@ Program exit codes match the `result_code` field in JSON output:
 
 ### Binary Data Limitation
 
-The `cat` command outputs binary data to stdout and cannot be used with `--json`. Use `materialize` or `stat` instead:
+The `get` command outputs binary data to stdout and cannot be used with `--json`. Use `materialize` or `metadata` instead:
 
 ```bash
 # This will error with JSON
-casq --json cat <hash>  # Error: binary data incompatible with JSON
+casq --json get <hash>  # Error: binary data incompatible with JSON
 
 # Use these alternatives
 casq --json materialize <hash> ./output  # Save to file
-casq --json stat <hash>                  # Get metadata
+casq --json metadata <hash>              # Get metadata
 ```
 
 ## Limitations
 
-- **No encryption** - Store plaintext only (planned for future)
+- **No encryption** - Store plaintext only
 - **No network** - Local-only storage
 - **No parallel operations** - Single-threaded (may be added in future)
 - **POSIX only** - Full permission preservation only on Unix-like systems
 
 ## Comparison to Git
 
-| Feature | casq | Git |
-|---------|--------|-----|
-| Content addressing | ✓ | ✓ |
-| Deduplication | ✓ | ✓ |
-| Trees/Blobs | ✓ | ✓ |
-| Hash algorithm | BLAKE3 | SHA-1/SHA-256 |
-| Commits | ✗ | ✓ |
-| Branches | ✗ | ✓ |
-| Diffs | ✗ | ✓ |
-| Network | ✗ | ✓ |
-| Use case | File storage | Version control |
+| Feature            | casq         | Git             |
+|--------------------|--------------|-----------------|
+| Content addressing | ✓            | ✓               |
+| Deduplication      | ✓            | ✓               |
+| Trees/Blobs        | ✓            | ✓               |
+| Hash algorithm     | BLAKE3       | SHA-1/SHA-256   |
+| Commits            | ✗            | ✓               |
+| Branches           | ✗            | ✓               |
+| Diffs              | ✗            | ✓               |
+| Network            | ✗            | ✓               |
+| Use case           | File storage | Version control |
 
 casq is simpler than git - it's just content-addressed storage without the version control features.
 
@@ -701,21 +674,21 @@ casq is simpler than git - it's just content-addressed storage without the versi
 ### Store not found
 
 ```bash
-$ casq add file.txt
+$ casq put file.txt
 Error: Failed to open store at ./casq-store
 
 # Solution: Initialize the store first
-$ casq init
+$ casq initialize
 ```
 
 ### Object not found
 
 ```bash
-$ casq cat abc123...
+$ casq get abc123...
 Error: Object not found: abc123...
 
 # Solution: Verify the hash is correct
-$ casq refs list  # Find the correct hash
+$ casq references list  # Find the correct hash
 ```
 
 ### Path already exists

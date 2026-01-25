@@ -2,7 +2,9 @@
 
 ![casq logo](assets/logo.jpeg)
 
-**A production-ready content-addressed file store with compression and chunking.**
+**A content-addressed file store with compression and chunking.**
+
+This is Alpha level software.
 
 `casq` (v0.4.0) is a single-binary tool for storing files and directories by their cryptographic hash. Think of it as a lightweight git object store or restic backend—but simpler, local-only, and purpose-built for content-addressed storage with modern efficiency features.
 
@@ -11,7 +13,7 @@
 - **Transparent compression** - 3-5x storage reduction with zstd (files ≥ 4KB automatically compressed)
 - **Content-defined chunking** - Incremental backups with FastCDC (files ≥ 1MB split into variable chunks)
 - **Content addressing** - Files identified by cryptographic hash, not by path
-- **Stdin support** - Pipe data directly from commands (e.g., `curl | casq add -`)
+- **Stdin support** - Pipe data directly from commands (e.g., `curl | casq put -`)
 - **Garbage collection** - Reclaim space from unreferenced objects with mark & sweep
 - **Simple & fast** - No databases, no network, just files on disk with BLAKE3 hashing
 - **Embeddable** - Rust library (`casq_core`) + CLI binary, easily integrated into your tools
@@ -20,29 +22,29 @@
 
 ```bash
 # Initialize a store
-casq init
+casq initialize
 
 # Add files and directories (automatically deduplicated)
-casq add myproject/ --ref-name snapshot-2024-01-21
+casq put myproject/ --reference snapshot-2024-01-21
 
 # Add content from stdin (pipe data directly)
-curl https://example.org | casq add --ref-name example-dot-org@20260123 -
-echo "quick note" | casq add --ref-name note-123 -
+curl https://example.org | casq put --reference example-dot-org@20260123 -
+echo "quick note" | casq put --reference note-123 -
 
 # List what you have
-casq ls
+casq references list
 # Output: snapshot-2024-01-21 -> abc123...
 
 # Explore a tree
-casq ls abc123...
+casq list abc123...
 
 # Retrieve content
-casq cat <hash>                    # Stream a file to stdout
+casq get <hash>                    # Stream a file to stdout
 casq materialize abc123... ./out   # Restore entire directory
 
 # Clean up unreferenced objects
-casq gc --dry-run                  # Preview
-casq gc                            # Actually delete
+casq collect-garbage --dry-run     # Preview
+casq collect-garbage               # Actually delete
 ```
 
 ### JSON Output for Automation
@@ -51,17 +53,17 @@ All commands support `--json` flag for machine-readable output:
 
 ```bash
 # Get structured output for scripting
-casq --json init
+casq --json initialize
 # {"success":true,"result_code":0,"root":"./casq-store","algorithm":"blake3-256"}
 
 # Pipe through jq for processing
-casq --json ls | jq '.refs[].name'
-casq --json add myfile.txt | jq '.objects[0].hash'
-casq --json stat <hash> | jq '{type:.type,size:.size}'
+casq --json references list | jq '.refs[].name'
+casq --json put myfile.txt | jq '.objects[0].hash'
+casq --json metadata <hash> | jq '{type:.type,size:.size}'
 
 # Use in scripts for automation
-HASH=$(casq --json add data.txt | jq -r '.objects[0].hash')
-casq --json gc --dry-run | jq '{dry_run,objects:. objects_deleted,bytes:.bytes_freed}'
+HASH=$(casq --json put data.txt | jq -r '.objects[0].hash')
+casq --json collect-garbage --dry-run | jq '{dry_run,objects:.objects_deleted,bytes:.bytes_freed}'
 ```
 
 **All JSON responses include**:
@@ -77,7 +79,7 @@ See [CLI README](casq/README.md) for complete JSON output specification.
 
 - **Text mode**: Data and informational messages go to stderr, stdout is empty
   - This enables proper pipeline usage
-  - Example: `HASH=$(casq add file.txt 2>&1 | awk '{print $1}')`
+  - Example: `HASH=$(casq put file.txt 2>&1 | awk '{print $1}')`
 
 - **JSON mode**: All structured data goes to stdout
   - Designed for parsing and automation
@@ -86,13 +88,13 @@ See [CLI README](casq/README.md) for complete JSON output specification.
 This design allows you to:
 ```bash
 # Pipe casq output reliably in text mode
-casq refs list 2>&1 | grep myref
+casq references list 2>&1 | grep myref
 
 # Suppress informational messages
-casq init 2>/dev/null
+casq initialize 2>/dev/null
 
 # Extract data in JSON mode (recommended for scripts)
-casq --json add file.txt | jq -r '.objects[0].hash'
+casq --json put file.txt | jq -r '.objects[0].hash'
 ```
 
 **For scripting**: Use `--json` flag for reliable, structured output on stdout.
