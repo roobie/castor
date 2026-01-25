@@ -5,5 +5,51 @@ just = "1.46"
 go = "1.25"
 
 
-[tasks]
-test = "just test"
+[tasks.deps]
+description = "Fetch cargo dependencies"
+run = "cargo fetch"
+
+[tasks.deps-update]
+description = "Update cargo dependencies"
+run = "cargo update"
+
+[tasks.deps-upgrade]
+description = "Upgrade cargo dependencies"
+run = "cargo install cargo-upgrade && cargo-upgrade upgrade"
+
+[tasks.fmt]
+description = "Format code"
+run = "cargo fmt --all"
+
+[tasks.lint]
+description = "Check formatting and run clippy"
+depends = ["fmt"]
+run = "cargo fmt --all -- --check && cargo clippy --all -- -D warnings"
+
+[tasks.lint-fix]
+description = "Auto-fix clippy issues"
+run = "cargo clippy --all --fix"
+
+[tasks.build]
+description = "Build the project"
+depends = ["deps", "lint"]
+run = "cargo build"
+
+[tasks.test]
+description = "Run tests"
+depends = ["build"]
+run = "cargo test"
+
+[tasks.install]
+description = "Install casq binary"
+depends = ["test"]
+run = "cargo install --path ./casq"
+
+[tasks.publish]
+description = "Publish to crates.io"
+run = "cargo publish --workspace"
+
+[tasks.all]
+description = "Build, test, and install"
+depends = ["build", "test", "install"]
+run = "echo 'All tasks completed'"

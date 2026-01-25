@@ -125,54 +125,66 @@ This is a **Rust workspace** with two crates:
 
 ## Build and Development Commands
 
-### Building
+This project uses **mise** for task automation. All development tasks are defined in `mise.toml`.
+
+### Available Mise Tasks
+
 ```bash
-# Build the entire workspace
-cargo build
+# List all available tasks
+mise tasks
+
+# Fetch dependencies
+mise run deps
+
+# Update dependencies
+mise run deps-update
+
+# Upgrade dependencies (requires cargo-upgrade)
+mise run deps-upgrade
+
+# Format code
+mise run fmt
+
+# Lint (check formatting + clippy)
+mise run lint
+
+# Auto-fix clippy issues
+mise run lint-fix
+
+# Build (runs deps + lint first)
+mise run build
+
+# Run tests (runs build first)
+mise run test
+
+# Install casq (runs test first)
+mise run install
+
+# Publish to crates.io
+mise run publish
+
+# Build + test + install
+mise run all
+```
+
+### Direct Cargo Commands
+
+You can also use cargo directly when needed:
+
+```bash
+# Build specific crate
+cargo build -p casq
+cargo build -p casq_core
 
 # Build release version
 cargo build --release
 
-# Build specific crate
-cargo build -p casq
-cargo build -p casq_core
-```
-
-### Running
-```bash
-# Run the CLI (once implemented)
+# Run the CLI
 cargo run -p casq -- <args>
-
-# Or after building
-./target/debug/casq <args>
-```
-
-### Testing
-```bash
-# Run all tests
-cargo test
 
 # Run tests for specific crate
 cargo test -p casq_core
-cargo test -p casq
-
-# Run with output
 cargo test -- --nocapture
-```
-
-### Linting and Formatting
-```bash
-# Check code formatting
-cargo fmt --check
-
-# Format code
-cargo fmt
-
-# Run clippy
-cargo clippy
-
-# Run clippy with strict checks
-cargo clippy -- -D warnings
 ```
 
 ## Architecture

@@ -196,9 +196,6 @@ pub struct BlobInfo {
 #[derive(Debug, Serialize)]
 #[serde(tag = "type")]
 pub enum LsData {
-    RefList {
-        refs: Vec<RefInfo>,
-    },
     TreeContents {
         hash: Hash,
         entries: Vec<TreeEntryInfo>,

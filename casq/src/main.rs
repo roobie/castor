@@ -41,7 +41,7 @@ enum Commands {
         path: String,
 
         /// Create a reference to the added content
-        #[arg(short, long)]
+        #[arg(long)]
         reference: Option<String>,
     },
 
@@ -67,7 +67,7 @@ enum Commands {
     List {
         /// Hash of the object
         #[arg(required = true)]
-        hash: Option<String>,
+        hash: String,
 
         /// Show detailed information
         #[arg(short, long)]
@@ -97,11 +97,11 @@ enum Commands {
 
     /// Manage references
     #[command(subcommand)]
-    Refs(RefsCommands),
+    References(ReferencesCommands),
 }
 
 #[derive(Subcommand)]
-enum RefsCommands {
+enum ReferencesCommands {
     /// Add a reference
     Add {
         /// Reference name
@@ -145,10 +145,12 @@ fn main() {
         Commands::Metadata { hash } => cmd_metadata(&root, &hash, &output),
         Commands::CollectGarbage { dry_run } => cmd_collect_garbage(&root, dry_run, &output),
         Commands::FindOrphans { long } => cmd_get_orphans(&root, long, &output),
-        Commands::Refs(refs_cmd) => match refs_cmd {
-            RefsCommands::Add { name, hash } => cmd_refs_add(&root, &name, &hash, &output),
-            RefsCommands::List => cmd_refs_list(&root, &output),
-            RefsCommands::Remove { name } => cmd_refs_remove(&root, &name, &output),
+        Commands::References(references_cmd) => match references_cmd {
+            ReferencesCommands::Add { name, hash } => {
+                cmd_references_add(&root, &name, &hash, &output)
+            }
+            ReferencesCommands::List => cmd_references_list(&root, &output),
+            ReferencesCommands::Remove { name } => cmd_references_remove(&root, &name, &output),
         },
     };
 
@@ -252,20 +254,20 @@ fn cmd_put(
         reference: reference.clone(),
     };
 
+    // Output reference confirmation to stderr (if applicable)
+    if let Some(ref r) = reference
+    // && !output.is_json()
+    {
+        use std::io::Write;
+        let _ = writeln!(io::stderr(), "{}", r.name);
+    }
+
     // Output hash+path data to stdout
     output.write(&data, || {
         let mut text = String::new();
-        text.push_str(&format!("{}", data.object.hash));
+        text.push_str(&format!("{}\n", data.object.hash));
         text
     })?;
-
-    // Output reference confirmation to stderr (if applicable)
-    if let Some(ref r) = reference
-        && !output.is_json()
-    {
-        use std::io::Write;
-        let _ = writeln!(io::stderr(), "Created reference: {} -> {}", r.name, r.hash);
-    }
 
     Ok(())
 }
@@ -336,67 +338,12 @@ fn cmd_get(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_list(
-    root: &Path,
-    hash_str: &Option<String>,
-    long: bool,
-    output: &OutputWriter,
-) -> Result<()> {
+fn cmd_list(root: &Path, hash_str: &String, long: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
-    // If no hash provided, list all refs
-    if hash_str.is_none() {
-        let refs = store
-            .refs()
-            .list()
-            .with_context(|| "Failed to list references")?;
-
-        let ref_infos: Vec<RefInfo> = refs
-            .into_iter()
-            .map(|(name, hash)| RefInfo { name, hash })
-            .collect();
-
-        let data = LsOutput {
-            success: true,
-            result_code: 0,
-            data: LsData::RefList {
-                refs: ref_infos.clone(),
-            },
-        };
-
-        if ref_infos.is_empty() {
-            // Empty state message → stderr
-            output.write_info(&data, || {
-                "No references (use 'casq add --ref-name' to create one)\n".to_string()
-            })?;
-        } else {
-            // Data output → stdout
-            output.write(&data, || {
-                let mut text = String::new();
-                for r in &ref_infos {
-                    if long {
-                        // Try to determine type
-                        let type_str = if store.get_tree(&r.hash).is_ok() {
-                            "tree"
-                        } else {
-                            "blob"
-                        };
-                        text.push_str(&format!("{} {} -> {}\n", type_str, r.name, r.hash));
-                    } else {
-                        text.push_str(&format!("{} -> {}\n", r.name, r.hash));
-                    }
-                }
-                text
-            })?;
-        }
-
-        return Ok(());
-    }
-
     // Hash was provided - show object contents
-    let hash = Hash::from_hex(hash_str.as_ref().unwrap())
-        .with_context(|| format!("Invalid hash: {}", hash_str.as_ref().unwrap()))?;
+    let hash = Hash::from_hex(hash_str).with_context(|| format!("Invalid hash: {}", hash_str))?;
 
     // Check if it's a tree or blob
     let obj_path = store.object_path(&hash);
@@ -632,7 +579,12 @@ fn cmd_get_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()>
     Ok(())
 }
 
-fn cmd_refs_add(root: &Path, name: &str, hash_str: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_references_add(
+    root: &Path,
+    name: &str,
+    hash_str: &str,
+    output: &OutputWriter,
+) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -655,7 +607,7 @@ fn cmd_refs_add(root: &Path, name: &str, hash_str: &str, output: &OutputWriter) 
     Ok(())
 }
 
-fn cmd_refs_list(root: &Path, output: &OutputWriter) -> Result<()> {
+fn cmd_references_list(root: &Path, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -692,7 +644,7 @@ fn cmd_refs_list(root: &Path, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_refs_remove(root: &Path, name: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_references_remove(root: &Path, name: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
