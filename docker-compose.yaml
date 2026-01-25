@@ -15,6 +15,8 @@ services:
       - command-history:/commandhistory
       # Persist .cache files (mise)
       - mise-state:/home/dev/.mise
+      - cargo-state:/home/dev/.cargo
+      - go-state:/home/dev/go
       # Host Claude config (optional - comment out if not needed)
       # - ${HOME}/.claude/CLAUDE.md:/home/dev/.claude/CLAUDE.md:ro
       # - ${HOME}/.claude/settings.json:/home/dev/.claude/settings.json:ro
@@ -31,3 +33,5 @@ volumes:
   claude-state:
   command-history:
   mise-state:
+  cargo-state:
+  go-state:

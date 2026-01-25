@@ -9,11 +9,45 @@
       "Bash(cargo run:*)",
       "mcp__serena__list_dir",
       "mcp__serena__get_symbols_overview",
-        "Bash(uv run ruff:*)",
-        "Bash(uv run pytest:*)",
-        "Bash(just test:*)",
-        "Bash(ls:*)"
-        "Bash(wc:*)"
+      "Bash(uv run ruff:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(just test:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(beans query:*)",
+      "Bash(beans create:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "beans prime"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "beans prime"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mise x -- just fmt"
+          }
+        ]
+      }
     ]
   }
 }
