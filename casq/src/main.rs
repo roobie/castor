@@ -28,41 +28,45 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Initialize a new store
-    Init {
+    Initialize {
         /// Hash algorithm to use
-        #[arg(long, default_value = "blake3")]
-        algo: String,
+        #[arg(short, long, default_value = "blake3")]
+        algorithm: String,
     },
 
-    /// Add files or directories to the store
-    Add {
-        /// Paths to add (or "-" to read from stdin)
+    /// Put files or directories to the store
+    Put {
+        /// Path to add (or "-" to read from stdin)
         #[arg(required = true)]
-        paths: Vec<String>,
+        path: String,
 
         /// Create a reference to the added content
-        #[arg(long)]
-        ref_name: Option<String>,
+        #[arg(short, long)]
+        reference: Option<String>,
     },
 
     /// Materialize an object to the filesystem
     Materialize {
         /// Hash of the object to materialize
+        #[arg(required = true)]
         hash: String,
 
         /// Destination path
-        dest: PathBuf,
+        #[arg(required = true)]
+        destination: PathBuf,
     },
 
-    /// Output blob content to stdout
-    Cat {
+    /// Output blob content and write it to stdout
+    Get {
         /// Hash of the blob
+        #[arg(required = true)]
         hash: String,
     },
 
-    /// List tree contents or show blob info (lists refs if no hash given)
-    Ls {
-        /// Hash of the object (lists all refs if omitted)
+    /// List tree children
+    List {
+        /// Hash of the object
+        #[arg(required = true)]
         hash: Option<String>,
 
         /// Show detailed information
@@ -71,34 +75,24 @@ enum Commands {
     },
 
     /// Show object metadata
-    Stat {
+    Metadata {
         /// Hash of the object
+        #[arg(required = true)]
         hash: String,
     },
 
     /// Garbage collect unreferenced objects
-    Gc {
+    CollectGarbage {
         /// Dry run - show what would be deleted without deleting
         #[arg(long)]
         dry_run: bool,
     },
 
-    /// Find orphaned tree roots (unreferenced trees)
-    Orphans {
+    /// Find orphaned objects (unreferenced trees and blobs)
+    FindOrphans {
         /// Show detailed information
         #[arg(short, long)]
         long: bool,
-    },
-
-    /// View operation journal
-    Journal {
-        /// Show only recent N entries
-        #[arg(long)]
-        recent: Option<usize>,
-
-        /// Show only orphaned entries
-        #[arg(long)]
-        orphans: bool,
     },
 
     /// Manage references
@@ -121,7 +115,7 @@ enum RefsCommands {
     List,
 
     /// Remove a reference
-    Rm {
+    Remove {
         /// Reference name
         name: String,
     },
@@ -141,19 +135,20 @@ fn main() {
 
     // Execute command and handle errors
     let result = match cli.command {
-        Commands::Init { algo } => cmd_init(&root, &algo, &output),
-        Commands::Add { paths, ref_name } => cmd_add(&root, paths, ref_name, &output),
-        Commands::Materialize { hash, dest } => cmd_materialize(&root, &hash, &dest, &output),
-        Commands::Cat { hash } => cmd_cat(&root, &hash, &output),
-        Commands::Ls { hash, long } => cmd_ls(&root, &hash, long, &output),
-        Commands::Stat { hash } => cmd_stat(&root, &hash, &output),
-        Commands::Gc { dry_run } => cmd_gc(&root, dry_run, &output),
-        Commands::Orphans { long } => cmd_orphans(&root, long, &output),
-        Commands::Journal { recent, orphans } => cmd_journal(&root, recent, orphans, &output),
+        Commands::Initialize { algorithm } => cmd_init(&root, &algorithm, &output),
+        Commands::Put { path, reference } => cmd_put(&root, path, reference, &output),
+        Commands::Materialize { hash, destination } => {
+            cmd_materialize(&root, &hash, &destination, &output)
+        }
+        Commands::Get { hash } => cmd_get(&root, &hash, &output),
+        Commands::List { hash, long } => cmd_list(&root, &hash, long, &output),
+        Commands::Metadata { hash } => cmd_metadata(&root, &hash, &output),
+        Commands::CollectGarbage { dry_run } => cmd_collect_garbage(&root, dry_run, &output),
+        Commands::FindOrphans { long } => cmd_get_orphans(&root, long, &output),
         Commands::Refs(refs_cmd) => match refs_cmd {
             RefsCommands::Add { name, hash } => cmd_refs_add(&root, &name, &hash, &output),
             RefsCommands::List => cmd_refs_list(&root, &output),
-            RefsCommands::Rm { name } => cmd_refs_rm(&root, &name, &output),
+            RefsCommands::Remove { name } => cmd_refs_remove(&root, &name, &output),
         },
     };
 
@@ -191,9 +186,9 @@ fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_add(
+fn cmd_put(
     root: &Path,
-    paths: Vec<String>,
+    path: String,
     ref_name: Option<String>,
     output: &OutputWriter,
 ) -> Result<()> {
@@ -201,32 +196,18 @@ fn cmd_add(
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
     // Detect stdin mode
-    let has_stdin = paths.iter().any(|p| p == "-");
-    let has_paths = paths.iter().any(|p| p != "-");
+    let has_stdin = path == "-";
 
-    // Validate: no mixing stdin with filesystem paths
-    if has_stdin && has_paths {
-        anyhow::bail!(
-            "Cannot mix stdin ('-') with filesystem paths.\n\
-             Use either: casq add - (for stdin) OR casq add path1 path2 (for files)"
-        );
-    }
-
-    // Validate: at most one stdin reference
-    if paths.iter().filter(|p| *p == "-").count() > 1 {
-        anyhow::bail!("stdin can only be read once per invocation");
-    }
-
-    let mut objects = Vec::new();
+    let object: AddedObject;
     let mut reference = None;
 
     // Process based on mode
     if has_stdin {
         let hash = add_from_stdin(&store)?;
-        objects.push(AddedObject {
+        object = AddedObject {
             hash,
             path: "(stdin)".to_string(),
-        });
+        };
 
         // Create reference if requested
         if let Some(ref name) = ref_name {
@@ -241,24 +222,18 @@ fn cmd_add(
         }
     } else {
         // Regular filesystem paths
-        let mut last_hash = None;
-        for path_str in paths {
-            let path = PathBuf::from(&path_str);
-            let hash = store
-                .add_path(&path)
-                .with_context(|| format!("Failed to add path: {}", path.display()))?;
+        let path = PathBuf::from(&path);
+        let hash = store
+            .add_path(&path)
+            .with_context(|| format!("Failed to add path: {}", path.display()))?;
 
-            objects.push(AddedObject {
-                hash,
-                path: path.display().to_string(),
-            });
-            last_hash = Some(hash);
-        }
+        object = AddedObject {
+            hash,
+            path: path.display().to_string(),
+        };
 
         // Create reference if requested (points to last hash if multiple paths)
-        if let Some(ref name) = ref_name
-            && let Some(hash) = last_hash
-        {
+        if let Some(ref name) = ref_name {
             store
                 .refs()
                 .add(name, &hash)
@@ -273,16 +248,14 @@ fn cmd_add(
     let data = AddOutput {
         success: true,
         result_code: 0,
-        objects: objects.clone(),
+        object,
         reference: reference.clone(),
     };
 
     // Output hash+path data to stdout
     output.write(&data, || {
         let mut text = String::new();
-        for obj in &objects {
-            text.push_str(&format!("{}\n", obj.hash));
-        }
+        text.push_str(&format!("{}", data.object.hash));
         text
     })?;
 
@@ -337,7 +310,7 @@ fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path, output: &OutputWrit
     Ok(())
 }
 
-fn cmd_cat(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_get(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     if output.is_json() {
         anyhow::bail!(
             "The 'cat' command outputs binary data to stdout and cannot be used with --json.\n\
@@ -363,7 +336,12 @@ fn cmd_cat(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool, output: &OutputWriter) -> Result<()> {
+fn cmd_list(
+    root: &Path,
+    hash_str: &Option<String>,
+    long: bool,
+    output: &OutputWriter,
+) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -503,7 +481,7 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool, output: &OutputWri
     Ok(())
 }
 
-fn cmd_stat(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_metadata(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -573,7 +551,7 @@ fn cmd_stat(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_gc(root: &Path, dry_run: bool, output: &OutputWriter) -> Result<()> {
+fn cmd_collect_garbage(root: &Path, dry_run: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -606,7 +584,7 @@ fn cmd_gc(root: &Path, dry_run: bool, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
+fn cmd_get_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
@@ -646,93 +624,6 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
                 } else {
                     text.push_str(&format!("{}  {}\n", orphan.hash, orphan.object_type));
                 }
-            }
-            text
-        })?;
-    }
-
-    Ok(())
-}
-
-fn cmd_journal(
-    root: &Path,
-    recent: Option<usize>,
-    orphans: bool,
-    output: &OutputWriter,
-) -> Result<()> {
-    let store =
-        Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
-
-    let entries = if orphans {
-        // Show only orphaned entries
-        store
-            .find_orphan_journal_entries()
-            .with_context(|| "Failed to find orphaned journal entries")?
-    } else if let Some(count) = recent {
-        // Show recent N entries
-        store
-            .journal()
-            .read_recent(count)
-            .with_context(|| "Failed to read journal entries")?
-    } else {
-        // Show all entries (default to recent 10 if not specified)
-        store
-            .journal()
-            .read_recent(10)
-            .with_context(|| "Failed to read journal entries")?
-    };
-
-    let entry_infos: Vec<JournalEntryInfo> = entries
-        .iter()
-        .map(|e| {
-            let datetime = chrono::DateTime::from_timestamp(e.timestamp, 0)
-                .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
-            let timestamp_human = datetime.format("%Y-%m-%dT%H:%M:%SZ").to_string();
-
-            JournalEntryInfo {
-                timestamp: e.timestamp as u64,
-                timestamp_human,
-                operation: e.operation.clone(),
-                hash: e.hash,
-                path: e.path.clone(),
-                metadata: if e.metadata.is_empty() {
-                    None
-                } else {
-                    Some(e.metadata.clone())
-                },
-            }
-        })
-        .collect();
-
-    let data = JournalOutput {
-        success: true,
-        result_code: 0,
-        entries: entry_infos.clone(),
-    };
-
-    if entry_infos.is_empty() {
-        // Empty state message → stderr
-        output.write_info(&data, || {
-            if orphans {
-                "No orphaned journal entries found\n".to_string()
-            } else {
-                "No journal entries\n".to_string()
-            }
-        })?;
-    } else {
-        // Data output → stdout
-        output.write(&data, || {
-            let mut text = String::new();
-            for entry in &entries {
-                // Format timestamp as human-readable
-                let datetime = chrono::DateTime::from_timestamp(entry.timestamp, 0)
-                    .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
-                let formatted_time = datetime.format("%Y-%m-%d %H:%M:%S");
-
-                text.push_str(&format!(
-                    "{}  {}  {}  {}  {}\n",
-                    formatted_time, entry.operation, entry.hash, entry.path, entry.metadata
-                ));
             }
             text
         })?;
@@ -801,7 +692,7 @@ fn cmd_refs_list(root: &Path, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_refs_rm(root: &Path, name: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_refs_remove(root: &Path, name: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 

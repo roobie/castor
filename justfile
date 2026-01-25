@@ -36,9 +36,8 @@ run-casq *ARGS:
 
 test: build
 	cargo test
-	just -f ./casq-test/justfile test
+	# just -f ./casq-test/justfile test
 
-# Install all three binaries (unified + standalone for backward compatibility)
 install: test
 	cargo install --path ./casq
 

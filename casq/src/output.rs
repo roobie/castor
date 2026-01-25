@@ -153,7 +153,7 @@ pub struct ReferenceCreated {
 pub struct AddOutput {
     pub success: bool,
     pub result_code: u8,
-    pub objects: Vec<AddedObject>,
+    pub object: AddedObject,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reference: Option<ReferenceCreated>,
 }
@@ -292,26 +292,6 @@ pub struct OrphansOutput {
     pub success: bool,
     pub result_code: u8,
     pub orphans: Vec<OrphanInfo>,
-}
-
-/// Journal entry information.
-#[derive(Debug, Clone, Serialize)]
-pub struct JournalEntryInfo {
-    pub timestamp: u64,
-    pub timestamp_human: String,
-    pub operation: String,
-    pub hash: Hash,
-    pub path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<String>,
-}
-
-/// Output for `journal` command.
-#[derive(Debug, Serialize)]
-pub struct JournalOutput {
-    pub success: bool,
-    pub result_code: u8,
-    pub entries: Vec<JournalEntryInfo>,
 }
 
 /// Output for `refs add` command.
