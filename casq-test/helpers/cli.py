@@ -69,45 +69,45 @@ class casqCLI:
             env=final_env,
         )
 
-    def init(
+    def initialize(
         self,
         root: Optional[Path] = None,
         algo: str = "blake3",
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Initialize a new store."""
-        args = ["init"]
+        args = ["initialize"]
         if algo != "blake3":
-            args.extend(["--algo", algo])
+            args.extend(["--algorithm", algo])
         return self.run(*args, root=root, expect_success=expect_success)
 
-    def add(
+    def put(
         self,
         *paths: Path,
         root: Optional[Path] = None,
         ref_name: Optional[str] = None,
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
-        """Add files or directories to the store."""
-        args = ["add"]
+        """Put files or directories to the store."""
+        args = ["put"]
         if ref_name:
-            args.extend(["--ref-name", ref_name])
+            args.extend(["--reference", ref_name])
         args.extend(str(p) for p in paths)
         return self.run(*args, root=root, expect_success=expect_success)
 
     def materialize(
         self,
         hash_str: str,
-        dest: Path,
+        destination: Path,
         root: Optional[Path] = None,
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Materialize an object to a destination path."""
         return self.run(
-            "materialize", hash_str, str(dest), root=root, expect_success=expect_success
+            "materialize", hash_str, str(destination), root=root, expect_success=expect_success
         )
 
-    def cat(
+    def get(
         self,
         hash_str: str,
         root: Optional[Path] = None,
@@ -115,10 +115,10 @@ class casqCLI:
     ) -> subprocess.CompletedProcess:
         """Output a blob to stdout."""
         return self.run(
-            "cat", hash_str, root=root, expect_success=expect_success, binary_mode=True
+            "get", hash_str, root=root, expect_success=expect_success, binary_mode=True
         )
 
-    def ls(
+    def list(
         self,
         hash_or_empty: Optional[str] = None,
         root: Optional[Path] = None,
@@ -126,30 +126,30 @@ class casqCLI:
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """List refs or tree contents."""
-        args = ["ls"]
+        args = ["list"]
         if long_format:
             args.append("-l")
         if hash_or_empty:
             args.append(hash_or_empty)
         return self.run(*args, root=root, expect_success=expect_success)
 
-    def stat(
+    def metadata(
         self,
         hash_str: str,
         root: Optional[Path] = None,
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Show object metadata."""
-        return self.run("stat", hash_str, root=root, expect_success=expect_success)
+        return self.run("metadata", hash_str, root=root, expect_success=expect_success)
 
-    def gc(
+    def collect_garbage(
         self,
         root: Optional[Path] = None,
         dry_run: bool = False,
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Run garbage collection."""
-        args = ["gc"]
+        args = ["collect-garbage"]
         if dry_run:
             args.append("--dry-run")
         return self.run(*args, root=root, expect_success=expect_success)
@@ -174,23 +174,23 @@ class casqCLI:
         """List all references."""
         return self.run("refs", "list", root=root, expect_success=expect_success)
 
-    def refs_rm(
+    def refs_remove(
         self,
         name: str,
         root: Optional[Path] = None,
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Remove a named reference."""
-        return self.run("refs", "rm", name, root=root, expect_success=expect_success)
+        return self.run("refs", "remove", name, root=root, expect_success=expect_success)
 
-    def orphans(
+    def find_orphans(
         self,
         root: Optional[Path] = None,
         long_format: bool = False,
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
-        """Show orphaned tree roots."""
-        args = ["orphans"]
+        """Show orphaned CAS objects."""
+        args = ["find-orphans"]
         if long_format:
             args.append("-l")
         return self.run(*args, root=root, expect_success=expect_success)

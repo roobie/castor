@@ -72,7 +72,7 @@ def initialized_store(casq_store, cli) -> Path:
     Returns:
         Path to initialized store
     """
-    cli.init(root=casq_store)
+    cli.initialize(root=casq_store)
     return casq_store
 
 

@@ -36,7 +36,7 @@ run-casq *ARGS:
 
 test: build
 	cargo test
-	# just -f ./casq-test/justfile test
+	just -f ./casq-test/justfile test
 
 install: test
 	cargo install --path ./casq
