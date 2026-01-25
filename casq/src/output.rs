@@ -61,6 +61,35 @@ impl OutputWriter {
         Ok(())
     }
 
+    /// Write informational output to the appropriate stream.
+    ///
+    /// In text mode, writes to stderr (for informational messages like confirmations).
+    /// In JSON mode, writes to stdout as JSON (structured data).
+    ///
+    /// This separates informational messages from data output in text mode,
+    /// following Unix conventions and enabling proper pipeline usage.
+    pub fn write_info<T: Serialize>(
+        &self,
+        data: &T,
+        text_fn: impl FnOnce() -> String,
+    ) -> Result<()> {
+        match self.format {
+            OutputFormat::Json => {
+                // JSON mode: write to stdout (structured data)
+                let json = serde_json::to_string_pretty(data)?;
+                writeln!(&self.stdout, "{}", json)?;
+            }
+            OutputFormat::Text => {
+                // Text mode: write to stderr (informational message)
+                let text = text_fn();
+                if !text.is_empty() {
+                    write!(io::stderr(), "{}", text)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Write an error message to stderr.
     ///
     /// In JSON mode, writes a JSON error object with success=false.

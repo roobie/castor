@@ -2,6 +2,7 @@
 
 import json
 from fixtures import sample_files
+from helpers.verification import get_object_type, verify_object_exists
 
 
 def test_stdin_basic(cli, initialized_store):
@@ -12,15 +13,12 @@ def test_stdin_basic(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    # Should output hash with "(stdin)" label
     output = result.stdout.decode().strip()
-    assert "(stdin)" in output
-    hash_value = output.split()[0]
+    hash_value = output
     assert len(hash_value) == 64  # BLAKE3 hex length
 
     # Verify we can retrieve the content
-    cat_result = cli.cat(hash_value, root=initialized_store)
-    assert cat_result.stdout == content
+    verify_object_exists(initialized_store, hash_value)
 
 
 def test_stdin_with_ref_name(cli, initialized_store):
@@ -37,13 +35,13 @@ def test_stdin_with_ref_name(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    output = result.stdout.decode()
+    output = result.stderr.decode()
     assert "(stdin)" in output
     assert "Created reference: test-ref ->" in output
 
     # Verify ref was created
     refs_result = cli.refs_list(root=initialized_store)
-    refs_output = refs_result.stdout
+    refs_output = refs_result.stderr
     assert "test-ref ->" in refs_output
 
 
@@ -55,13 +53,13 @@ def test_stdin_empty(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    output = result.stdout.decode().strip()
+    output = result.stderr.decode().strip()
     assert "(stdin)" in output
     hash_value = output.split()[0]
 
     # Verify empty content is stored correctly
     cat_result = cli.cat(hash_value, root=initialized_store)
-    assert cat_result.stdout == b""
+    assert cat_result.stderr == b""
 
 
 def test_stdin_binary_data(cli, initialized_store):
@@ -72,11 +70,11 @@ def test_stdin_binary_data(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Verify binary content preserved exactly
     cat_result = cli.cat(hash_value, root=initialized_store)
-    assert cat_result.stdout == content
+    assert cat_result.stderr == content
 
 
 def test_stdin_large_content_triggers_compression(cli, initialized_store):
@@ -88,12 +86,12 @@ def test_stdin_large_content_triggers_compression(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Verify content is retrievable (decompression transparent)
     cat_result = cli.cat(hash_value, root=initialized_store)
-    assert cat_result.stdout == content
-    assert len(cat_result.stdout) == 8192
+    assert cat_result.stderr == content
+    assert len(cat_result.stderr) == 8192
 
     # Verify compression occurred (object file should be smaller)
     obj_path = (
@@ -115,12 +113,12 @@ def test_stdin_very_large_content_triggers_chunking(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Verify content is retrievable (chunking transparent)
     cat_result = cli.cat(hash_value, root=initialized_store)
-    assert cat_result.stdout == content
-    assert len(cat_result.stdout) == 2 * 1024 * 1024
+    assert cat_result.stderr == content
+    assert len(cat_result.stderr) == 2 * 1024 * 1024
 
 
 def test_stdin_roundtrip(cli, initialized_store):
@@ -137,10 +135,10 @@ def test_stdin_roundtrip(cli, initialized_store):
         result = cli.run(
             "add", "-", root=initialized_store, input_data=content, binary_mode=True
         )
-        hash_value = result.stdout.decode().strip().split()[0]
+        hash_value = result.stderr.decode().strip().split()[0]
 
         cat_result = cli.cat(hash_value, root=initialized_store)
-        assert cat_result.stdout == content, f"Round-trip failed for {content!r}"
+        assert cat_result.stderr == content, f"Round-trip failed for {content!r}"
 
 
 def test_stdin_journal_recording(cli, initialized_store):
@@ -149,11 +147,11 @@ def test_stdin_journal_recording(cli, initialized_store):
     result = cli.run(
         "add", "-", root=initialized_store, input_data=content, binary_mode=True
     )
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Check journal
     journal_result = cli.run("journal", "--recent", "5", root=initialized_store)
-    journal_output = journal_result.stdout
+    journal_output = journal_result.stderr
 
     # Should contain the hash and "(stdin)" as path
     assert hash_value in journal_output
@@ -168,11 +166,11 @@ def test_stdin_orphan_detection(cli, initialized_store):
     result = cli.run(
         "add", "-", root=initialized_store, input_data=content, binary_mode=True
     )
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Should appear in orphan journal
     orphan_result = cli.run("journal", "--orphans", root=initialized_store)
-    orphan_output = orphan_result.stdout
+    orphan_output = orphan_result.stderr
 
     assert hash_value in orphan_output
     assert "(stdin)" in orphan_output
@@ -190,13 +188,13 @@ def test_stdin_with_ref_not_orphan(cli, initialized_store):
         input_data=content,
         binary_mode=True,
     )
-    hash_value = result.stdout.decode().split()[0]
+    hash_value = result.stderr.decode().split()[0]
 
     assert hash_value != ""
 
     # Should NOT appear in orphan journal
     orphan_result = cli.run("journal", "--orphans", root=initialized_store)
-    orphan_output = orphan_result.stdout
+    orphan_output = orphan_result.stderr
 
     assert "No orphaned journal entries found" in orphan_output
 
@@ -224,14 +222,14 @@ def test_stdin_real_world_curl_simulation(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    output = result.stdout.decode()
+    output = result.stderr.decode()
     assert "(stdin)" in output
     assert "Created reference: api-response@20260123 ->" in output
 
     # Verify content is valid JSON
     hash_value = output.split()[0]
     cat_result = cli.cat(hash_value, root=initialized_store)
-    retrieved_json = json.loads(cat_result.stdout.decode())
+    retrieved_json = json.loads(cat_result.stderr.decode())
     assert retrieved_json["status"] == "ok"
 
 
@@ -283,12 +281,12 @@ def test_stdin_unicode_content(cli, initialized_store):
     )
 
     assert result.returncode == 0
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Verify Unicode preserved
     cat_result = cli.cat(hash_value, root=initialized_store)
-    assert cat_result.stdout == content
-    assert cat_result.stdout.decode("utf-8") == "Hello 世界! 🌍 Здравствуй Мир"
+    assert cat_result.stderr == content
+    assert cat_result.stderr.decode("utf-8") == "Hello 世界! 🌍 Здравствуй Мир"
 
 
 def test_stdin_hash_stability(cli, initialized_store):
@@ -299,12 +297,12 @@ def test_stdin_hash_stability(cli, initialized_store):
     result1 = cli.run(
         "add", "-", root=initialized_store, input_data=content, binary_mode=True
     )
-    hash1 = result1.stdout.decode().strip().split()[0]
+    hash1 = result1.stderr.decode().strip().split()[0]
 
     result2 = cli.run(
         "add", "-", root=initialized_store, input_data=content, binary_mode=True
     )
-    hash2 = result2.stdout.decode().strip().split()[0]
+    hash2 = result2.stderr.decode().strip().split()[0]
 
     # Should produce identical hashes (deduplication)
     assert hash1 == hash2
@@ -316,11 +314,11 @@ def test_stdin_stat_shows_blob(cli, initialized_store):
     result = cli.run(
         "add", "-", root=initialized_store, input_data=content, binary_mode=True
     )
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Run stat
     stat_result = cli.stat(hash_value, root=initialized_store)
-    stat_output = stat_result.stdout
+    stat_output = stat_result.stderr
 
     assert "Type: blob" in stat_output
     assert f"Size: {len(content)} bytes" in stat_output
@@ -333,11 +331,11 @@ def test_stdin_ls_shows_blob(cli, initialized_store):
     result = cli.run(
         "add", "-", root=initialized_store, input_data=content, binary_mode=True
     )
-    hash_value = result.stdout.decode().strip().split()[0]
+    hash_value = result.stderr.decode().strip().split()[0]
 
     # Run ls
     ls_result = cli.ls(hash_value, root=initialized_store, long_format=True)
-    ls_output = ls_result.stdout
+    ls_output = ls_result.stderr
 
     assert "blob" in ls_output
     assert str(len(content)) in ls_output

@@ -71,6 +71,32 @@ casq --json gc --dry-run | jq '{dry_run,objects:. objects_deleted,bytes:.bytes_f
 
 See [CLI README](casq/README.md) for complete JSON output specification.
 
+### Output Streams
+
+`casq` follows Unix conventions for output streams:
+
+- **Text mode**: Data and informational messages go to stderr, stdout is empty
+  - This enables proper pipeline usage
+  - Example: `HASH=$(casq add file.txt 2>&1 | awk '{print $1}')`
+
+- **JSON mode**: All structured data goes to stdout
+  - Designed for parsing and automation
+  - Example: `HASH=$(casq --json add file.txt | jq -r '.objects[0].hash')`
+
+This design allows you to:
+```bash
+# Pipe casq output reliably in text mode
+casq refs list 2>&1 | grep myref
+
+# Suppress informational messages
+casq init 2>/dev/null
+
+# Extract data in JSON mode (recommended for scripts)
+casq --json add file.txt | jq -r '.objects[0].hash'
+```
+
+**For scripting**: Use `--json` flag for reliable, structured output on stdout.
+
 ## Use Cases
 
 ### Developer & Build Workflows

@@ -21,7 +21,7 @@ def test_add_single_regular_file(cli, initialized_store, sample_file):
 
     assert result.returncode == 0
     # Output should contain a hash
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     assert len(hash_output) == 64  # BLAKE3 hex length
     verify_object_exists(initialized_store, hash_output)
 
@@ -30,7 +30,7 @@ def test_add_file_returns_correct_hash_format(cli, initialized_store, sample_fil
     """Test that add returns valid hex hash."""
     result = cli.add(sample_file, root=initialized_store)
 
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     # Should be valid hex
     int(hash_output, 16)
     assert len(hash_output) == 64
@@ -45,7 +45,7 @@ def test_add_executable_file(cli, initialized_store, workspace):
     result = cli.add(exe_file, root=initialized_store)
     assert result.returncode == 0
 
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
 
 
@@ -56,7 +56,7 @@ def test_add_empty_file(cli, initialized_store, workspace):
     result = cli.add(empty_file, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
 
 
@@ -65,7 +65,7 @@ def test_add_binary_file(cli, initialized_store, sample_binary):
     result = cli.add(sample_binary, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
     assert get_object_type(initialized_store, hash_output) == "blob"
 
@@ -79,7 +79,7 @@ def test_add_file_with_unicode_name(cli, initialized_store, workspace):
     result = cli.add(unicode_file, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
 
 
@@ -99,7 +99,7 @@ def test_add_with_ref_name(cli, initialized_store, sample_file):
     result = cli.add(sample_file, root=initialized_store, ref_name="myref")
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
 
     # Check that ref was created
     refs = list_all_refs(initialized_store)
@@ -115,7 +115,7 @@ def test_add_empty_directory(cli, initialized_store, workspace):
     result = cli.add(empty_dir, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
     assert get_object_type(initialized_store, hash_output) == "tree"
 
@@ -125,7 +125,7 @@ def test_add_flat_directory(cli, initialized_store, sample_tree):
     result = cli.add(sample_tree, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
     assert get_object_type(initialized_store, hash_output) == "tree"
 
@@ -135,7 +135,7 @@ def test_add_nested_directory_tree(cli, initialized_store, nested_tree):
     result = cli.add(nested_tree, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
     assert get_object_type(initialized_store, hash_output) == "tree"
 
@@ -144,7 +144,7 @@ def test_add_directory_creates_tree_object(cli, initialized_store, sample_tree):
     """Test that adding directory creates a tree object."""
     result = cli.add(sample_tree, root=initialized_store)
 
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     obj_type = get_object_type(initialized_store, hash_output)
     assert obj_type == "tree"
 
@@ -167,7 +167,7 @@ def test_add_tree_entries_are_parseable(cli, initialized_store, sample_tree):
     """Test that tree entries can be parsed correctly."""
     result = cli.add(sample_tree, root=initialized_store)
 
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
     entries = parse_tree_entries(initialized_store, tree_hash)
 
     # SIMPLE_TREE has 2 files
@@ -189,7 +189,7 @@ def test_add_tree_entries_sorted_by_name(cli, initialized_store, workspace):
     )
 
     result = cli.add(tree_dir, root=initialized_store)
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
 
     entries = parse_tree_entries(initialized_store, tree_hash)
     names = [e["name"] for e in entries]
@@ -215,12 +215,12 @@ def test_add_same_file_twice_deduplication(cli, initialized_store, sample_file):
     """Test that adding same file twice only stores it once."""
     # First add
     result1 = cli.add(sample_file, root=initialized_store)
-    hash1 = result1.stdout.strip().split()[0]
+    hash1 = result1.stdout.strip()
     count1 = count_objects(initialized_store)
 
     # Second add
     result2 = cli.add(sample_file, root=initialized_store)
-    hash2 = result2.stdout.strip().split()[0]
+    hash2 = result2.stdout.strip()
     count2 = count_objects(initialized_store)
 
     # Same hash, same object count
@@ -288,7 +288,7 @@ def test_add_large_file(cli, initialized_store, workspace):
     result = cli.add(large_file, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
 
 
@@ -304,7 +304,7 @@ def test_add_many_files_in_directory(cli, initialized_store, workspace):
     result = cli.add(many_dir, root=initialized_store)
 
     assert result.returncode == 0
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
     entries = parse_tree_entries(initialized_store, tree_hash)
     assert len(entries) == 100
 
@@ -328,7 +328,7 @@ def test_add_directory_with_various_file_types(cli, initialized_store, complex_t
     result = cli.add(complex_tree, root=initialized_store)
 
     assert result.returncode == 0
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
     verify_object_exists(initialized_store, tree_hash)
 
 
@@ -342,7 +342,7 @@ def test_add_preserves_directory_mode(cli, initialized_store, workspace):
 
     assert result.returncode == 0
     # Mode info should be in tree entries
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
     entries = parse_tree_entries(initialized_store, tree_hash)
     assert all(e["mode"] > 0 for e in entries)
 
@@ -353,7 +353,7 @@ def test_add_file_mode_preserved(cli, initialized_store, workspace):
 
     # Add via parent directory to get tree entry
     result = cli.add(workspace, root=initialized_store)
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
 
     entries = parse_tree_entries(initialized_store, tree_hash)
     exe_entry = [e for e in entries if e["name"] == "executable"][0]
@@ -374,7 +374,7 @@ def test_add_ref_name_creates_ref_file(cli, initialized_store, sample_file):
 def test_add_ref_name_contains_correct_hash(cli, initialized_store, sample_file):
     """Test that ref file contains the correct hash."""
     result = cli.add(sample_file, root=initialized_store, ref_name="test-ref")
-    expected_hash = result.stdout.strip().split()[0]
+    expected_hash = result.stdout.strip()
 
     ref_file = initialized_store / "refs" / "test-ref"
     ref_content = ref_file.read_text().strip()
@@ -389,11 +389,11 @@ def test_add_updates_existing_ref(cli, initialized_store, workspace):
 
     # First add
     result1 = cli.add(file1, root=initialized_store, ref_name="myref")
-    hash1 = result1.stdout.strip().split()[0]
+    hash1 = result1.stdout.strip()
 
     # Second add with same ref name
     result2 = cli.add(file2, root=initialized_store, ref_name="myref")
-    hash2 = result2.stdout.strip().split()[0]
+    hash2 = result2.stdout.strip()
 
     # Ref should now point to hash2
     refs = list_all_refs(initialized_store)
@@ -404,7 +404,7 @@ def test_add_updates_existing_ref(cli, initialized_store, workspace):
 def test_add_subdirectory_also_becomes_tree(cli, initialized_store, nested_tree):
     """Test that subdirectories also become tree objects."""
     result = cli.add(nested_tree, root=initialized_store)
-    root_hash = result.stdout.strip().split()[0]
+    root_hash = result.stdout.strip()
 
     # Parse root tree
     entries = parse_tree_entries(initialized_store, root_hash)
@@ -443,7 +443,7 @@ def test_add_with_dot_files(cli, initialized_store, workspace):
     result = cli.add(tree_dir, root=initialized_store)
 
     assert result.returncode == 0
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
     entries = parse_tree_entries(initialized_store, tree_hash)
 
     names = [e["name"] for e in entries]
@@ -457,7 +457,7 @@ def test_add_empty_directory_creates_empty_tree(cli, initialized_store, workspac
     empty_dir.mkdir()
 
     result = cli.add(empty_dir, root=initialized_store)
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stdout.strip()
 
     entries = parse_tree_entries(initialized_store, tree_hash)
     assert len(entries) == 0
@@ -466,7 +466,7 @@ def test_add_empty_directory_creates_empty_tree(cli, initialized_store, workspac
 def test_add_single_blob_object_type(cli, initialized_store, sample_file):
     """Test that adding a file creates a blob object."""
     result = cli.add(sample_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
 
     obj_type = get_object_type(initialized_store, hash_output)
     assert obj_type == "blob"
@@ -481,7 +481,7 @@ def test_add_file_with_newlines(cli, initialized_store, workspace):
     result = cli.add(file_with_newlines, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
 
 
@@ -494,7 +494,7 @@ def test_add_binary_file_with_null_bytes(cli, initialized_store, workspace):
     result = cli.add(null_file, root=initialized_store)
 
     assert result.returncode == 0
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stdout.strip()
     verify_object_exists(initialized_store, hash_output)
 
 

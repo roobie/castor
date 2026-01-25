@@ -180,7 +180,7 @@ fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
         algorithm: algorithm.as_str().to_string(),
     };
 
-    output.write(&data, || {
+    output.write_info(&data, || {
         format!(
             "Initialized casq store at {}\nAlgorithm: {}\n",
             root.display(),
@@ -277,16 +277,22 @@ fn cmd_add(
         reference: reference.clone(),
     };
 
+    // Output hash+path data to stdout
     output.write(&data, || {
         let mut text = String::new();
         for obj in &objects {
-            text.push_str(&format!("{} {}\n", obj.hash, obj.path));
-        }
-        if let Some(ref r) = reference {
-            text.push_str(&format!("Created reference: {} -> {}\n", r.name, r.hash));
+            text.push_str(&format!("{}\n", obj.hash));
         }
         text
     })?;
+
+    // Output reference confirmation to stderr (if applicable)
+    if let Some(ref r) = reference
+        && !output.is_json()
+    {
+        use std::io::Write;
+        let _ = writeln!(io::stderr(), "Created reference: {} -> {}", r.name, r.hash);
+    }
 
     Ok(())
 }
@@ -324,7 +330,7 @@ fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path, output: &OutputWrit
         destination: dest.display().to_string(),
     };
 
-    output.write(&data, || {
+    output.write_info(&data, || {
         format!("Materialized {} to {}\n", hash, dest.display())
     })?;
 
@@ -381,10 +387,14 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool, output: &OutputWri
             },
         };
 
-        output.write(&data, || {
-            if ref_infos.is_empty() {
+        if ref_infos.is_empty() {
+            // Empty state message → stderr
+            output.write_info(&data, || {
                 "No references (use 'casq add --ref-name' to create one)\n".to_string()
-            } else {
+            })?;
+        } else {
+            // Data output → stdout
+            output.write(&data, || {
                 let mut text = String::new();
                 for r in &ref_infos {
                     if long {
@@ -400,8 +410,8 @@ fn cmd_ls(root: &Path, hash_str: &Option<String>, long: bool, output: &OutputWri
                     }
                 }
                 text
-            }
-        })?;
+            })?;
+        }
 
         return Ok(());
     }
@@ -612,10 +622,12 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
         orphans: orphan_infos.clone(),
     };
 
-    output.write(&data, || {
-        if orphan_infos.is_empty() {
-            "No orphaned objects found\n".to_string()
-        } else {
+    if orphan_infos.is_empty() {
+        // Empty state message → stderr
+        output.write_info(&data, || "No orphaned objects found\n".to_string())?;
+    } else {
+        // Data output → stdout
+        output.write(&data, || {
             let mut text = String::new();
             for orphan in &orphan_infos {
                 if long {
@@ -636,8 +648,8 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
                 }
             }
             text
-        }
-    })?;
+        })?;
+    }
 
     Ok(())
 }
@@ -698,14 +710,18 @@ fn cmd_journal(
         entries: entry_infos.clone(),
     };
 
-    output.write(&data, || {
-        if entry_infos.is_empty() {
+    if entry_infos.is_empty() {
+        // Empty state message → stderr
+        output.write_info(&data, || {
             if orphans {
                 "No orphaned journal entries found\n".to_string()
             } else {
                 "No journal entries\n".to_string()
             }
-        } else {
+        })?;
+    } else {
+        // Data output → stdout
+        output.write(&data, || {
             let mut text = String::new();
             for entry in &entries {
                 // Format timestamp as human-readable
@@ -719,8 +735,8 @@ fn cmd_journal(
                 ));
             }
             text
-        }
-    })?;
+        })?;
+    }
 
     Ok(())
 }
@@ -743,7 +759,7 @@ fn cmd_refs_add(root: &Path, name: &str, hash_str: &str, output: &OutputWriter) 
         hash,
     };
 
-    output.write(&data, || format!("{} -> {}\n", name, hash))?;
+    output.write_info(&data, || format!("{} -> {}\n", name, hash))?;
 
     Ok(())
 }
@@ -768,17 +784,19 @@ fn cmd_refs_list(root: &Path, output: &OutputWriter) -> Result<()> {
         refs: ref_infos.clone(),
     };
 
-    output.write(&data, || {
-        if ref_infos.is_empty() {
-            "No references\n".to_string()
-        } else {
+    if ref_infos.is_empty() {
+        // Empty state message → stderr
+        output.write_info(&data, || "No references\n".to_string())?;
+    } else {
+        // Data output → stdout
+        output.write(&data, || {
             let mut text = String::new();
             for r in &ref_infos {
                 text.push_str(&format!("{} -> {}\n", r.name, r.hash));
             }
             text
-        }
-    })?;
+        })?;
+    }
 
     Ok(())
 }
@@ -798,7 +816,7 @@ fn cmd_refs_rm(root: &Path, name: &str, output: &OutputWriter) -> Result<()> {
         name: name.to_string(),
     };
 
-    output.write(&data, || format!("Removed reference: {}\n", name))?;
+    output.write_info(&data, || format!("Removed reference: {}\n", name))?;
 
     Ok(())
 }

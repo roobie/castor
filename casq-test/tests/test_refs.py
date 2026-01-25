@@ -9,7 +9,7 @@ from helpers.verification import list_all_refs
 def test_refs_add_valid_name_and_hash(cli, initialized_store, sample_file):
     """Test adding a ref with valid name and hash."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     refs_result = cli.refs_add("myref", file_hash, root=initialized_store)
 
@@ -24,7 +24,7 @@ def test_refs_add_valid_name_and_hash(cli, initialized_store, sample_file):
 def test_refs_add_creates_ref_file(cli, initialized_store, sample_file):
     """Test that refs add creates the actual ref file."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("testref", file_hash, root=initialized_store)
 
@@ -55,7 +55,7 @@ def test_refs_add_nonexistent_hash(cli, initialized_store):
 def test_refs_add_invalid_name_with_dotdot(cli, initialized_store, sample_file):
     """Test that ref names containing '..' are rejected."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     result = cli.refs_add(
         "../invalid", file_hash, root=initialized_store, expect_success=False
@@ -67,7 +67,7 @@ def test_refs_add_invalid_name_with_dotdot(cli, initialized_store, sample_file):
 def test_refs_add_invalid_name_with_slash(cli, initialized_store, sample_file):
     """Test that ref names containing '/' are rejected."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add(
         "invalid/name", file_hash, root=initialized_store, expect_success=False
@@ -80,7 +80,7 @@ def test_refs_add_invalid_name_with_slash(cli, initialized_store, sample_file):
 def test_refs_add_empty_name(cli, initialized_store, sample_file):
     """Test that empty ref name is rejected."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     result = cli.refs_add("", file_hash, root=initialized_store, expect_success=False)
 
@@ -92,8 +92,8 @@ def test_refs_add_update_existing_ref(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "f1.txt", "content1")
     file2 = sample_files.create_sample_file(workspace / "f2.txt", "content2")
 
-    hash1 = cli.add(file1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(file2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(file1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(file2, root=initialized_store).stderr.strip().split()[0]
 
     # Create ref
     cli.refs_add("updateme", hash1, root=initialized_store)
@@ -111,46 +111,46 @@ def test_refs_list_empty(cli, initialized_store):
     result = cli.refs_list(root=initialized_store)
 
     assert result.returncode == 0
-    assert result.stdout.strip() == "No references"
+    assert result.stderr.strip() == "No references"
 
 
 def test_refs_list_single_ref(cli, initialized_store, sample_file):
     """Test listing a single ref."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("single", file_hash, root=initialized_store)
 
     list_result = cli.refs_list(root=initialized_store)
 
     assert list_result.returncode == 0
-    assert "single" in list_result.stdout
+    assert "single" in list_result.stderr
 
 
 def test_refs_list_multiple_refs(cli, initialized_store, workspace):
     """Test listing multiple refs."""
     for i in range(5):
         file = sample_files.create_sample_file(workspace / f"f{i}.txt", f"content{i}")
-        hash_val = cli.add(file, root=initialized_store).stdout.strip().split()[0]
+        hash_val = cli.add(file, root=initialized_store).stderr.strip().split()[0]
         cli.refs_add(f"ref{i}", hash_val, root=initialized_store)
 
     list_result = cli.refs_list(root=initialized_store)
 
     assert list_result.returncode == 0
     for i in range(5):
-        assert f"ref{i}" in list_result.stdout
+        assert f"ref{i}" in list_result.stderr
 
 
 def test_refs_list_shows_hashes(cli, initialized_store, sample_file):
     """Test that refs list shows hash values."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("showme", file_hash, root=initialized_store)
 
     list_result = cli.refs_list(root=initialized_store)
 
-    assert file_hash in list_result.stdout
+    assert file_hash in list_result.stderr
 
 
 def test_refs_list_sorting(cli, initialized_store, workspace):
@@ -158,20 +158,20 @@ def test_refs_list_sorting(cli, initialized_store, workspace):
     names = ["zebra", "alpha", "middle", "beta"]
     for name in names:
         file = sample_files.create_sample_file(workspace / f"{name}.txt", name)
-        hash_val = cli.add(file, root=initialized_store).stdout.strip().split()[0]
+        hash_val = cli.add(file, root=initialized_store).stderr.strip().split()[0]
         cli.refs_add(name, hash_val, root=initialized_store)
 
     list_result = cli.refs_list(root=initialized_store)
 
     # All names should appear
     for name in names:
-        assert name in list_result.stdout
+        assert name in list_result.stderr
 
 
 def test_refs_rm_existing_ref(cli, initialized_store, sample_file):
     """Test removing an existing ref."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("removeme", file_hash, root=initialized_store)
 
@@ -188,7 +188,7 @@ def test_refs_rm_existing_ref(cli, initialized_store, sample_file):
 def test_refs_rm_removes_ref_file(cli, initialized_store, sample_file):
     """Test that refs rm deletes the actual ref file."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("deleteme", file_hash, root=initialized_store)
 
@@ -221,7 +221,7 @@ def test_refs_add_and_list_integration(cli, initialized_store, workspace):
     # Add refs
     for name, content in refs_to_create.items():
         file = sample_files.create_sample_file(workspace / f"{name}.txt", content)
-        hash_val = cli.add(file, root=initialized_store).stdout.strip().split()[0]
+        hash_val = cli.add(file, root=initialized_store).stderr.strip().split()[0]
         cli.refs_add(name, hash_val, root=initialized_store)
         hashes[name] = hash_val
 
@@ -230,34 +230,34 @@ def test_refs_add_and_list_integration(cli, initialized_store, workspace):
 
     # All should be listed
     for name, hash_val in hashes.items():
-        assert name in list_result.stdout
-        assert hash_val in list_result.stdout
+        assert name in list_result.stderr
+        assert hash_val in list_result.stderr
 
 
 def test_refs_add_list_remove_workflow(cli, initialized_store, sample_file):
     """Test complete workflow: add → list → remove."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     # Add ref
     cli.refs_add("workflow", file_hash, root=initialized_store)
 
     # List - should appear
     list1 = cli.refs_list(root=initialized_store)
-    assert "workflow" in list1.stdout
+    assert "workflow" in list1.stderr
 
     # Remove ref
     cli.refs_rm("workflow", root=initialized_store)
 
     # List - should not appear
     list2 = cli.refs_list(root=initialized_store)
-    assert "workflow" not in list2.stdout or list2.stdout.strip() == ""
+    assert "workflow" not in list2.stderr or list2.stderr.strip() == ""
 
 
 def test_refs_add_special_characters_in_name(cli, initialized_store, sample_file):
     """Test ref names with special (but valid) characters."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     # Try various special chars
     valid_names = ["backup-2024", "test_ref", "v1.0", "my-backup"]
@@ -276,8 +276,8 @@ def test_refs_update_preserves_history(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "v1.txt", "version 1")
     file2 = sample_files.create_sample_file(workspace / "v2.txt", "version 2")
 
-    hash1 = cli.add(file1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(file2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(file1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(file2, root=initialized_store).stderr.strip().split()[0]
 
     # Add initial ref
     cli.refs_add("versioned", hash1, root=initialized_store)
@@ -297,7 +297,7 @@ def test_refs_update_preserves_history(cli, initialized_store, workspace):
 def test_refs_add_to_tree_object(cli, initialized_store, sample_tree):
     """Test creating ref to a tree object."""
     add_result = cli.add(sample_tree, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     refs_result = cli.refs_add("tree-backup", tree_hash, root=initialized_store)
 
@@ -309,7 +309,7 @@ def test_refs_add_to_tree_object(cli, initialized_store, sample_tree):
 def test_refs_remove_doesnt_delete_object(cli, initialized_store, sample_file):
     """Test that removing a ref doesn't delete the object."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("tempref", file_hash, root=initialized_store)
     cli.refs_rm("tempref", root=initialized_store)
@@ -331,7 +331,7 @@ def test_refs_list_after_store_init(cli, initialized_store):
 def test_refs_add_multiple_refs_same_hash(cli, initialized_store, sample_file):
     """Test adding multiple refs pointing to same hash."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     cli.refs_add("ref1", file_hash, root=initialized_store)
     cli.refs_add("ref2", file_hash, root=initialized_store)
@@ -346,8 +346,8 @@ def test_refs_case_sensitivity(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "f1.txt", "content1")
     file2 = sample_files.create_sample_file(workspace / "f2.txt", "content2")
 
-    hash1 = cli.add(file1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(file2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(file1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(file2, root=initialized_store).stderr.strip().split()[0]
 
     cli.refs_add("MyRef", hash1, root=initialized_store)
     cli.refs_add("myref", hash2, root=initialized_store)
@@ -363,7 +363,7 @@ def test_refs_case_sensitivity(cli, initialized_store, workspace):
 def test_refs_long_name(cli, initialized_store, sample_file):
     """Test ref with long (but valid) name."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     long_name = "a" * 200  # Long but valid filename
     result = cli.refs_add(long_name, file_hash, root=initialized_store)

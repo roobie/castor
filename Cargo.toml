@@ -3,7 +3,7 @@ members = ["casq_core", "casq"]
 resolver = "2"
 
 [workspace.package]
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Björn Roberg <bjorn.roberg@gmail.com>"]
 edition = "2024"
 license-file = "LICENSE"
@@ -12,4 +12,4 @@ repository = "https://github.com/roobie/casq"
 keywords = ["storage", "content-addressable", "file-system-tool", "backup"]
 
 [workspace.dependencies]
-casq_core = { version = "0.6.0", path = "casq_core" }
+casq_core = { version = "0.7.0", path = "casq_core" }

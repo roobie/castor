@@ -1,11 +1,11 @@
 ---
-# workspace-rh4j
+# casq-rh4j
 title: Implement property-based testing suite
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-01-25T09:26:19Z
-updated_at: 2026-01-25T09:26:39Z
+updated_at: 2026-01-25T11:29:16Z
 blocking:
     - workspace-70j4
 ---

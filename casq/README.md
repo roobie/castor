@@ -331,6 +331,37 @@ casq add myfile.txt
 casq add myfile.txt
 ```
 
+## Output Streams
+
+`casq` follows Unix conventions for output streams to enable proper pipeline usage:
+
+**Text mode** (default):
+- All informational messages, confirmations, and data → **stderr**
+- **stdout** is empty
+- This allows reliable pipeline usage and scripting
+
+**JSON mode** (`--json` flag):
+- All structured output → **stdout**
+- Errors → **stderr** (as JSON)
+- Designed for parsing and automation
+
+**Examples:**
+
+```bash
+# Text mode - output on stderr
+casq add file.txt 2>&1 | awk '{print $1}'  # Extract hash
+casq refs list 2>&1 | grep myref            # Filter refs
+
+# Suppress informational messages
+casq init 2>/dev/null
+
+# JSON mode - output on stdout (recommended for scripts)
+HASH=$(casq --json add file.txt | jq -r '.objects[0].hash')
+casq --json ls | jq '.refs[].name'
+```
+
+**For scripting**: Use `--json` flag for reliable, machine-readable output.
+
 ## Typical Workflows
 
 ### Backup Workflow

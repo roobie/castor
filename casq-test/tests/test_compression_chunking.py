@@ -72,7 +72,7 @@ def test_small_file_not_compressed(cli, initialized_store, workspace):
     result = cli.add(small_file, root=initialized_store)
     assert result.returncode == 0
 
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
     verify_object_exists(initialized_store, hash_output)
 
     # Check compression type (should be 0 = None)
@@ -90,7 +90,7 @@ def test_medium_file_is_compressed(cli, initialized_store, workspace):
     result = cli.add(medium_file, root=initialized_store)
     assert result.returncode == 0
 
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
     verify_object_exists(initialized_store, hash_output)
 
     # Check compression type (should be 1 = Zstd)
@@ -112,7 +112,7 @@ def test_compression_reduces_storage(cli, initialized_store, workspace):
     )
 
     result = cli.add(compressible_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     # Get stored size (header + compressed payload)
     stored_size = get_stored_size(initialized_store, hash_output)
@@ -135,7 +135,7 @@ def test_compressed_file_round_trip(cli, initialized_store, workspace):
 
     # Add to store
     result = cli.add(original_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     # Verify compression
     compression = get_compression_type(initialized_store, hash_output)
@@ -168,7 +168,7 @@ def test_large_file_is_chunked(cli, initialized_store, workspace):
     result = cli.add(large_file, root=initialized_store)
     assert result.returncode == 0
 
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
     verify_object_exists(initialized_store, hash_output)
 
     # Check object type (should be 3 = ChunkList)
@@ -190,7 +190,7 @@ def test_chunked_file_creates_multiple_chunks(cli, initialized_store, workspace)
     large_file.write_bytes(data)
 
     result = cli.add(large_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     final_count = count_objects(initialized_store)
 
@@ -223,7 +223,7 @@ def test_chunked_file_round_trip(cli, initialized_store, workspace):
 
     # Add to store
     result = cli.add(original_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     # Verify it's chunked
     obj_type_id = read_object_header(initialized_store, hash_output)["type"]
@@ -255,7 +255,7 @@ def test_chunked_file_cat_works(cli, initialized_store, workspace):
     original_content = large_file.read_text()
 
     result = cli.add(large_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     # Cat the chunked file
     cat_result = cli.cat(hash_output, root=initialized_store)
@@ -263,9 +263,9 @@ def test_chunked_file_cat_works(cli, initialized_store, workspace):
 
     # Verify output matches original (stdout is bytes, decode it)
     cat_output = (
-        cat_result.stdout.decode("utf-8")
-        if isinstance(cat_result.stdout, bytes)
-        else cat_result.stdout
+        cat_result.stderr.decode("utf-8")
+        if isinstance(cat_result.stderr, bytes)
+        else cat_result.stderr
     )
     assert cat_output == original_content, "Cat output should match original"
 
@@ -282,12 +282,12 @@ def test_compressed_deduplication(cli, initialized_store, workspace):
 
     # Add first file
     result1 = cli.add(file1, root=initialized_store)
-    hash1 = result1.stdout.strip().split()[0]
+    hash1 = result1.stderr.strip().split()[0]
     count1 = count_objects(initialized_store)
 
     # Add identical file
     result2 = cli.add(file2, root=initialized_store)
-    hash2 = result2.stdout.strip().split()[0]
+    hash2 = result2.stderr.strip().split()[0]
     count2 = count_objects(initialized_store)
 
     # Same hash, same count (deduplication worked)
@@ -311,12 +311,12 @@ def test_chunked_deduplication(cli, initialized_store, workspace):
 
     # Add first file
     result1 = cli.add(file1, root=initialized_store)
-    hash1 = result1.stdout.strip().split()[0]
+    hash1 = result1.stderr.strip().split()[0]
     count1 = count_objects(initialized_store)
 
     # Add second file
     result2 = cli.add(file2, root=initialized_store)
-    hash2 = result2.stdout.strip().split()[0]
+    hash2 = result2.stderr.strip().split()[0]
     count2 = count_objects(initialized_store)
 
     # Different files, different hashes
@@ -354,7 +354,7 @@ def test_compression_on_tree_with_mixed_sizes(cli, initialized_store, workspace)
     result = cli.add(tree_dir, root=initialized_store)
     assert result.returncode == 0
 
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stderr.strip().split()[0]
     verify_object_exists(initialized_store, tree_hash)
 
 
@@ -366,7 +366,7 @@ def test_gc_works_with_chunked_objects(cli, initialized_store, workspace):
     )
 
     result = cli.add(large_file, root=initialized_store, ref_name="keep")
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     # Create another chunked file without ref (orphan)
     orphan_file = sample_files.create_binary_file(
@@ -408,10 +408,10 @@ def test_object_format_version(cli, initialized_store, workspace):
     )
 
     result1 = cli.add(small, root=initialized_store)
-    hash1 = result1.stdout.strip().split()[0]
+    hash1 = result1.stderr.strip().split()[0]
 
     result2 = cli.add(medium, root=initialized_store)
-    hash2 = result2.stdout.strip().split()[0]
+    hash2 = result2.stderr.strip().split()[0]
 
     # Both should use v2 format
     version1 = get_object_version(initialized_store, hash1)
@@ -440,7 +440,7 @@ def test_compression_with_various_data_patterns(cli, initialized_store, workspac
         result = cli.add(file_path, root=initialized_store)
         assert result.returncode == 0, f"Failed to add {description}"
 
-        hash_output = result.stdout.strip().split()[0]
+        hash_output = result.stderr.strip().split()[0]
 
         # All should be compressed (>4KB)
         compression = get_compression_type(initialized_store, hash_output)
@@ -463,7 +463,7 @@ def test_chunking_boundary_cases(cli, initialized_store, workspace):
     )
 
     result = cli.add(above_threshold, root=initialized_store)
-    hash_above = result.stdout.strip().split()[0]
+    hash_above = result.stderr.strip().split()[0]
     type_above = read_object_header(initialized_store, hash_above)["type"]
     assert type_above == 3, "Files >= 1MB should be chunked (ChunkList type)"
 
@@ -473,7 +473,7 @@ def test_chunking_boundary_cases(cli, initialized_store, workspace):
     )
 
     result = cli.add(well_under, root=initialized_store)
-    hash_under = result.stdout.strip().split()[0]
+    hash_under = result.stderr.strip().split()[0]
     type_under = read_object_header(initialized_store, hash_under)["type"]
     assert type_under == 1, "Files under 1MB should be regular blob (Blob type)"
 
@@ -485,13 +485,13 @@ def test_stat_shows_compression_info(cli, initialized_store, workspace):
     )
 
     result = cli.add(compressed_file, root=initialized_store)
-    hash_output = result.stdout.strip().split()[0]
+    hash_output = result.stderr.strip().split()[0]
 
     stat_result = cli.stat(hash_output, root=initialized_store)
     assert stat_result.returncode == 0
 
     # Verify stat output contains expected fields
-    output = stat_result.stdout.lower()
+    output = stat_result.stderr.lower()
     assert "hash:" in output or hash_output in output, "Stat should show hash"
     assert "type:" in output or "blob" in output, "Stat should show type"
 

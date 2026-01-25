@@ -132,8 +132,8 @@ def test_init_output_message(cli, casq_store):
     """Test init provides appropriate output message."""
     result = cli.init(root=casq_store)
 
-    # Should provide some confirmation
-    assert len(result.stdout) > 0 or len(result.stderr) > 0
+    # Confirmation message should go to stderr in text mode
+    assert len(result.stderr) > 0
 
 
 def test_init_empty_store_has_no_objects(cli, casq_store):

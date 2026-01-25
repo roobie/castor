@@ -15,7 +15,8 @@
       "Bash(ls:*)",
       "Bash(wc:*)",
       "Bash(beans query:*)",
-      "Bash(beans create:*)"
+      "Bash(beans create:*)",
+      "Bash(beans update:*)"
     ]
   },
   "hooks": {

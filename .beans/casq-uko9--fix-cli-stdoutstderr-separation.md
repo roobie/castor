@@ -1,11 +1,11 @@
 ---
 # casq-uko9
 title: Fix CLI stdout/stderr separation
-status: todo
+status: in-progress
 type: epic
 priority: high
 created_at: 2026-01-25T09:30:50Z
-updated_at: 2026-01-25T09:30:50Z
+updated_at: 2026-01-25T11:25:28Z
 ---
 
 The CLI violates the Unix principle of separating data output (stdout) from informational messages (stderr). This breaks scriptability and pipeline usage.

@@ -1,11 +1,11 @@
 ---
-# workspace-x35y
+# casq-x35y
 title: 'Fix stdout pollution: Success confirmation messages to stderr'
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-25T09:30:39Z
-updated_at: 2026-01-25T09:31:16Z
+updated_at: 2026-01-25T11:46:48Z
 parent: casq-uko9
 ---
 

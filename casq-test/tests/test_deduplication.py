@@ -11,12 +11,12 @@ def test_same_file_added_twice_single_object(cli, initialized_store, workspace):
 
     # Add first time
     result1 = cli.add(file, root=initialized_store)
-    hash1 = result1.stdout.strip().split()[0]
+    hash1 = result1.stderr.strip().split()[0]
     count1 = count_objects(initialized_store)
 
     # Add second time
     result2 = cli.add(file, root=initialized_store)
-    hash2 = result2.stdout.strip().split()[0]
+    hash2 = result2.stderr.strip().split()[0]
     count2 = count_objects(initialized_store)
 
     # Same hash, same count (no new objects)
@@ -32,13 +32,13 @@ def test_same_content_different_names_dedupe(cli, initialized_store, workspace):
     file2 = sample_files.create_sample_file(workspace / "name2.txt", content)
     file3 = sample_files.create_sample_file(workspace / "name3.txt", content)
 
-    hash1 = cli.add(file1, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(file1, root=initialized_store).stderr.strip().split()[0]
     count_after_first = count_objects(initialized_store)
 
-    hash2 = cli.add(file2, root=initialized_store).stdout.strip().split()[0]
+    hash2 = cli.add(file2, root=initialized_store).stderr.strip().split()[0]
     count_after_second = count_objects(initialized_store)
 
-    hash3 = cli.add(file3, root=initialized_store).stdout.strip().split()[0]
+    hash3 = cli.add(file3, root=initialized_store).stderr.strip().split()[0]
     count_after_third = count_objects(initialized_store)
 
     # All same hash
@@ -74,10 +74,10 @@ def test_same_subdirectories_in_different_trees(cli, initialized_store, workspac
 
     initial_count = count_objects(initialized_store)
 
-    cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
+    cli.add(tree1, root=initialized_store).stderr.strip().split()[0]
     count_after_tree1 = count_objects(initialized_store)
 
-    cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
+    cli.add(tree2, root=initialized_store).stderr.strip().split()[0]
     count_after_tree2 = count_objects(initialized_store)
 
     # Should have added fewer objects due to shared subdirectory
@@ -120,7 +120,7 @@ def test_empty_files_deduplicate(cli, initialized_store, workspace):
     hashes = []
     for empty_file in empty_files:
         result = cli.add(empty_file, root=initialized_store)
-        hashes.append(result.stdout.strip().split()[0])
+        hashes.append(result.stderr.strip().split()[0])
 
     # All empty files should have same hash
     assert len(set(hashes)) == 1
@@ -142,7 +142,7 @@ def test_dedupe_across_multiple_adds(cli, initialized_store, workspace):
         },
     )
 
-    hash1 = cli.add(dir1, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(dir1, root=initialized_store).stderr.strip().split()[0]
     count_objects(initialized_store)
 
     # Second batch with same content
@@ -154,7 +154,7 @@ def test_dedupe_across_multiple_adds(cli, initialized_store, workspace):
         },
     )
 
-    hash2 = cli.add(dir2, root=initialized_store).stdout.strip().split()[0]
+    hash2 = cli.add(dir2, root=initialized_store).stderr.strip().split()[0]
     count_objects(initialized_store)
 
     # Should have deduplicated the shared content blob
@@ -176,7 +176,7 @@ def test_partial_deduplication_in_snapshot(cli, initialized_store, workspace):
         },
     )
 
-    cli.add(v1, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
+    cli.add(v1, root=initialized_store, ref_name="v1").stderr.strip().split()[0]
     count_v1 = count_objects(initialized_store)
 
     # Snapshot 2 (some files same, some different)
@@ -189,7 +189,7 @@ def test_partial_deduplication_in_snapshot(cli, initialized_store, workspace):
         },
     )
 
-    cli.add(v2, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
+    cli.add(v2, root=initialized_store, ref_name="v2").stderr.strip().split()[0]
     count_v2 = count_objects(initialized_store)
 
     # Should have added: v2 tree + changed.txt blob + added.txt blob
@@ -217,7 +217,7 @@ def test_binary_deduplication(cli, initialized_store, workspace):
     hashes = []
     for binary in binaries:
         result = cli.add(binary, root=initialized_store)
-        hashes.append(result.stdout.strip().split()[0])
+        hashes.append(result.stderr.strip().split()[0])
 
     # All should have same hash
     assert len(set(hashes)) == 1

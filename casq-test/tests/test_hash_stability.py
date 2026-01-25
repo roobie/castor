@@ -12,7 +12,7 @@ def test_same_file_same_hash_determinism(cli, initialized_store, workspace):
     for i in range(5):
         file = sample_files.create_sample_file(workspace / f"test{i}.txt", content)
         result = cli.add(file, root=initialized_store)
-        hashes.append(result.stdout.strip().split()[0])
+        hashes.append(result.stderr.strip().split()[0])
 
     # All hashes should be identical
     assert len(set(hashes)) == 1
@@ -32,8 +32,8 @@ def test_same_directory_same_hash(cli, initialized_store, workspace):
     tree1 = sample_files.create_directory_tree(workspace / "tree1", structure)
     tree2 = sample_files.create_directory_tree(workspace / "tree2", structure)
 
-    hash1 = cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(tree1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(tree2, root=initialized_store).stderr.strip().split()[0]
 
     assert hash1 == hash2
 
@@ -53,8 +53,8 @@ def test_tree_entry_order_independence(cli, initialized_store, workspace):
     sample_files.create_sample_file(tree2 / "m.txt", "content m")
     sample_files.create_sample_file(tree2 / "a.txt", "content a")
 
-    hash1 = cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(tree1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(tree2, root=initialized_store).stderr.strip().split()[0]
 
     # Should have same hash despite creation order
     assert hash1 == hash2
@@ -63,7 +63,7 @@ def test_tree_entry_order_independence(cli, initialized_store, workspace):
 def test_hash_format_validation(cli, initialized_store, sample_file):
     """Test that hash output is always valid 64-char hex."""
     result = cli.add(sample_file, root=initialized_store)
-    hash_val = result.stdout.strip().split()[0]
+    hash_val = result.stderr.strip().split()[0]
 
     # Should be 64 hex characters (BLAKE3 256-bit)
     assert len(hash_val) == 64
@@ -80,7 +80,7 @@ def test_empty_file_consistent_hash(cli, initialized_store, workspace):
     for i in range(5):
         empty = sample_files.create_empty_file(workspace / f"empty{i}.txt")
         result = cli.add(empty, root=initialized_store)
-        empty_hashes.append(result.stdout.strip().split()[0])
+        empty_hashes.append(result.stderr.strip().split()[0])
 
     # All empty files should have identical hash
     assert len(set(empty_hashes)) == 1
@@ -97,7 +97,7 @@ def test_binary_content_hash_stability(cli, initialized_store, workspace):
             workspace / f"binary{i}.dat", size=size, pattern=pattern
         )
         result = cli.add(binary, root=initialized_store)
-        hashes.append(result.stdout.strip().split()[0])
+        hashes.append(result.stderr.strip().split()[0])
 
     # All should produce same hash
     assert len(set(hashes)) == 1
@@ -115,9 +115,9 @@ def test_newline_style_affects_hash(cli, initialized_store, workspace):
         workspace / "windows.txt", "line1\r\nline2\r\n"
     )
 
-    hash_unix = cli.add(unix_file, root=initialized_store).stdout.strip().split()[0]
+    hash_unix = cli.add(unix_file, root=initialized_store).stderr.strip().split()[0]
     hash_windows = (
-        cli.add(windows_file, root=initialized_store).stdout.strip().split()[0]
+        cli.add(windows_file, root=initialized_store).stderr.strip().split()[0]
     )
 
     # Different content = different hash
@@ -133,7 +133,7 @@ def test_repeated_add_same_hash(cli, initialized_store, workspace):
     hashes = []
     for _ in range(10):
         result = cli.add(test_file, root=initialized_store)
-        hashes.append(result.stdout.strip().split()[0])
+        hashes.append(result.stderr.strip().split()[0])
 
     # All adds should return identical hash
     assert len(set(hashes)) == 1

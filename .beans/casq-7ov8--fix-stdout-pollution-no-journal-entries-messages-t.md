@@ -1,11 +1,11 @@
 ---
-# workspace-7ov8
+# casq-7ov8
 title: 'Fix stdout pollution: ''No journal entries'' messages to stderr'
-status: todo
+status: in-progress
 type: bug
 priority: high
 created_at: 2026-01-25T09:30:38Z
-updated_at: 2026-01-25T09:31:14Z
+updated_at: 2026-01-25T11:46:35Z
 parent: casq-uko9
 ---
 

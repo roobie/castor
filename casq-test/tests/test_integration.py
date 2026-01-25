@@ -29,7 +29,7 @@ def test_full_backup_restore_workflow(cli, casq_store, workspace):
 
     # Add with ref
     add_result = cli.add(test_dir, root=casq_store, ref_name="backup-v1")
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     # Verify object exists
     verify_object_exists(casq_store, tree_hash)
@@ -62,7 +62,7 @@ def test_multiple_snapshots_with_deduplication(cli, initialized_store, workspace
             "v1-only.txt": "version 1 file",
         },
     )
-    cli.add(v1_dir, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
+    cli.add(v1_dir, root=initialized_store, ref_name="v1").stderr.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
@@ -74,7 +74,7 @@ def test_multiple_snapshots_with_deduplication(cli, initialized_store, workspace
             "v2-only.txt": "version 2 file",
         },
     )
-    cli.add(v2_dir, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
+    cli.add(v2_dir, root=initialized_store, ref_name="v2").stderr.strip().split()[0]
 
     final_count = count_objects(initialized_store)
 
@@ -89,7 +89,7 @@ def test_ref_management_workflow(cli, initialized_store, workspace):
     versions = {}
     for i in range(3):
         file = sample_files.create_sample_file(workspace / f"v{i}.txt", f"version {i}")
-        hash_val = cli.add(file, root=initialized_store).stdout.strip().split()[0]
+        hash_val = cli.add(file, root=initialized_store).stderr.strip().split()[0]
         versions[f"v{i}"] = hash_val
 
     # Add refs
@@ -99,7 +99,7 @@ def test_ref_management_workflow(cli, initialized_store, workspace):
     # List all refs
     list_result = cli.refs_list(root=initialized_store)
     for name in versions.keys():
-        assert name in list_result.stdout
+        assert name in list_result.stderr
 
     # Update v0 to point to v2's content
     cli.refs_add("v0", versions["v2"], root=initialized_store)
@@ -113,7 +113,7 @@ def test_ref_management_workflow(cli, initialized_store, workspace):
 
     # Verify removal
     list_result2 = cli.refs_list(root=initialized_store)
-    assert "v1" not in list_result2.stdout
+    assert "v1" not in list_result2.stderr
 
 
 def test_gc_interaction_with_refs(cli, initialized_store, workspace):
@@ -122,13 +122,13 @@ def test_gc_interaction_with_refs(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "keep.txt", "keep")
     hash1 = (
         cli.add(file1, root=initialized_store, ref_name="keeper")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
     # Add orphan
     file2 = sample_files.create_sample_file(workspace / "temp.txt", "temp")
-    hash2 = cli.add(file2, root=initialized_store).stdout.strip().split()[0]
+    hash2 = cli.add(file2, root=initialized_store).stderr.strip().split()[0]
 
     # GC should keep hash1, delete hash2
     cli.gc(root=initialized_store)
@@ -167,7 +167,7 @@ def test_complex_multicommand_scenario(cli, casq_store, workspace):
     )
     hash_v1 = (
         cli.add(project, root=casq_store, ref_name="project-v1")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
@@ -182,7 +182,7 @@ def test_complex_multicommand_scenario(cli, casq_store, workspace):
     # 4. Create new snapshot
     hash_v2 = (
         cli.add(project, root=casq_store, ref_name="project-v2")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
@@ -192,13 +192,13 @@ def test_complex_multicommand_scenario(cli, casq_store, workspace):
     # 6. Stat both versions
     stat_v1 = cli.stat(hash_v1, root=casq_store)
     stat_v2 = cli.stat(hash_v2, root=casq_store)
-    assert "tree" in stat_v1.stdout.lower()
-    assert "tree" in stat_v2.stdout.lower()
+    assert "tree" in stat_v1.stderr.lower()
+    assert "tree" in stat_v2.stderr.lower()
 
     # 7. List refs
     refs_list = cli.refs_list(root=casq_store)
-    assert "project-v1" in refs_list.stdout
-    assert "project-v2" in refs_list.stdout
+    assert "project-v1" in refs_list.stderr
+    assert "project-v2" in refs_list.stderr
 
     # 8. Restore v1
     restore_v1 = workspace / "restore-v1"
@@ -251,15 +251,15 @@ def test_cat_ls_stat_consistency(cli, initialized_store, workspace):
     test_file = sample_files.create_sample_file(workspace / "test.txt", content)
 
     # Add file
-    hash_val = cli.add(test_file, root=initialized_store).stdout.strip().split()[0]
+    hash_val = cli.add(test_file, root=initialized_store).stderr.strip().split()[0]
 
     # Cat should output content (cat returns bytes)
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == content.encode("utf-8")
+    assert cat_result.stderr == content.encode("utf-8")
 
     # Stat should show blob type
     stat_result = cli.stat(hash_val, root=initialized_store)
-    assert "blob" in stat_result.stdout.lower()
+    assert "blob" in stat_result.stderr.lower()
 
     # Ls should show blob info
     ls_result = cli.ls(hash_val, root=initialized_store)
@@ -271,18 +271,18 @@ def test_nested_tree_full_workflow(cli, initialized_store, workspace, nested_tre
     # Add
     hash_val = (
         cli.add(nested_tree, root=initialized_store, ref_name="nested")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
     # Ls should show top-level entries
     ls_result = cli.ls(hash_val, root=initialized_store)
-    assert "top.txt" in ls_result.stdout
-    assert "dir1" in ls_result.stdout
+    assert "top.txt" in ls_result.stderr
+    assert "dir1" in ls_result.stderr
 
     # Stat should show tree type
     stat_result = cli.stat(hash_val, root=initialized_store)
-    assert "tree" in stat_result.stdout.lower()
+    assert "tree" in stat_result.stderr.lower()
 
     # Materialize
     restore_dir = workspace / "restored"
@@ -387,18 +387,18 @@ def test_large_dataset_workflow(cli, initialized_store, workspace):
     # Add
     hash_val = (
         cli.add(large_dir, root=initialized_store, ref_name="large-set")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
     # Ls should list all
     ls_result = cli.ls(hash_val, root=initialized_store)
-    assert "file0.txt" in ls_result.stdout
-    assert "file49.txt" in ls_result.stdout
+    assert "file0.txt" in ls_result.stderr
+    assert "file49.txt" in ls_result.stderr
 
     # Stat
     stat_result = cli.stat(hash_val, root=initialized_store)
-    assert "50" in stat_result.stdout or "tree" in stat_result.stdout.lower()
+    assert "50" in stat_result.stderr or "tree" in stat_result.stderr.lower()
 
     # Materialize
     restore_dir = workspace / "restored_large"
@@ -416,10 +416,10 @@ def test_mixed_operations_consistency(cli, initialized_store, workspace):
 
     hash1 = (
         cli.add(file1, root=initialized_store, ref_name="ref1")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
-    cli.add(file2, root=initialized_store, ref_name="ref2").stdout.strip().split()[0]
+    cli.add(file2, root=initialized_store, ref_name="ref2").stderr.strip().split()[0]
 
     # Cat, ls, stat should all work
     cat1 = cli.cat(hash1, root=initialized_store)
@@ -457,13 +457,13 @@ def test_unicode_throughout_workflow(cli, initialized_store, workspace):
     # Add
     hash_val = (
         cli.add(unicode_dir, root=initialized_store, ref_name="unicode-backup")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
     # Ls
     ls_result = cli.ls(hash_val, root=initialized_store)
-    assert "café.txt" in ls_result.stdout
+    assert "café.txt" in ls_result.stderr
 
     # Materialize
     restore_dir = workspace / "restored_unicode"
@@ -481,8 +481,8 @@ def test_binary_files_workflow(cli, initialized_store, workspace):
     binary2 = sample_files.create_binary_file(workspace / "b2.bin", 2048, b"\xbe\xef")
 
     # Add
-    hash1 = cli.add(binary1, root=initialized_store).stdout.strip().split()[0]
-    cli.add(binary2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(binary1, root=initialized_store).stderr.strip().split()[0]
+    cli.add(binary2, root=initialized_store).stderr.strip().split()[0]
 
     # Cat
     cat1 = cli.cat(hash1, root=initialized_store)
@@ -490,7 +490,7 @@ def test_binary_files_workflow(cli, initialized_store, workspace):
 
     # Stat
     stat1 = cli.stat(hash1, root=initialized_store)
-    assert "blob" in stat1.stdout.lower()
+    assert "blob" in stat1.stderr.lower()
 
     # Materialize
     restore1 = workspace / "restored_b1.bin"
@@ -510,7 +510,7 @@ def test_store_compaction_scenario(cli, initialized_store, workspace):
         )
         hash_val = (
             cli.add(file, root=initialized_store, ref_name=f"gen{gen}")
-            .stdout.strip()
+            .stderr.strip()
             .split()[0]
         )
         hashes.append(hash_val)

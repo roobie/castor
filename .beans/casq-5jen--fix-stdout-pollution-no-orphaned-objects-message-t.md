@@ -1,11 +1,11 @@
 ---
-# workspace-5jen
+# casq-5jen
 title: 'Fix stdout pollution: ''No orphaned objects'' message to stderr'
-status: todo
+status: in-progress
 type: bug
 priority: high
 created_at: 2026-01-25T09:30:38Z
-updated_at: 2026-01-25T09:31:12Z
+updated_at: 2026-01-25T11:46:39Z
 parent: casq-uko9
 ---
 

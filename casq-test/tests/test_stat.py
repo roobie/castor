@@ -11,12 +11,12 @@ from helpers.verification import (
 def test_stat_blob_shows_type(cli, initialized_store, sample_file):
     """Test that stat shows object type for blob."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert "blob" in stat_result.stdout.lower()
+    assert "blob" in stat_result.stderr.lower()
 
 
 def test_add_directory_with_depth_more_than_one_and_check_stat_is_correct(
@@ -27,33 +27,33 @@ def test_add_directory_with_depth_more_than_one_and_check_stat_is_correct(
     """
     result = cli.add(complex_tree, root=initialized_store)
     assert result.returncode == 0
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stderr.strip().split()[0]
     verify_object_exists(initialized_store, tree_hash)
     stat_result = cli.stat(tree_hash, root=initialized_store)
     assert stat_result.returncode == 0
-    assert "entries: 4" in stat_result.stdout.lower()
+    assert "entries: 4" in stat_result.stderr.lower()
 
 
 def test_stat_tree_shows_type(cli, initialized_store, sample_tree):
     """Test that stat shows object type for tree."""
     add_result = cli.add(sample_tree, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(tree_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert "tree" in stat_result.stdout.lower()
+    assert "tree" in stat_result.stderr.lower()
 
 
 def test_stat_blob_shows_hash(cli, initialized_store, sample_file):
     """Test that stat shows the object hash."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert file_hash in stat_result.stdout
+    assert file_hash in stat_result.stderr
 
 
 def test_stat_blob_shows_size(cli, initialized_store, workspace):
@@ -62,49 +62,49 @@ def test_stat_blob_shows_size(cli, initialized_store, workspace):
     test_file = sample_files.create_sample_file(workspace / "test.txt", content)
 
     add_result = cli.add(test_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
     # Should show size (1000 bytes)
-    assert "1000" in stat_result.stdout or "size" in stat_result.stdout.lower()
+    assert "1000" in stat_result.stderr or "size" in stat_result.stderr.lower()
 
 
 def test_stat_tree_shows_entries(cli, initialized_store, sample_tree):
     """Test that stat shows number of tree entries."""
     add_result = cli.add(sample_tree, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(tree_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
     # SIMPLE_TREE has 2 entries
-    assert "2" in stat_result.stdout or "entries" in stat_result.stdout.lower()
+    assert "2" in stat_result.stderr or "entries" in stat_result.stderr.lower()
 
 
 def test_stat_shows_disk_size(cli, initialized_store, sample_file):
     """Test that stat shows on-disk size."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
     # Should show some size information
-    assert any(char.isdigit() for char in stat_result.stdout)
+    assert any(char.isdigit() for char in stat_result.stderr)
 
 
 def test_stat_shows_object_path(cli, initialized_store, sample_file):
     """Test that stat shows filesystem path to object."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
     # Should show path or just hash prefix
-    assert file_hash[:2] in stat_result.stdout or "path" in stat_result.stdout.lower()
+    assert file_hash[:2] in stat_result.stderr or "path" in stat_result.stderr.lower()
 
 
 def test_stat_invalid_hash(cli, initialized_store):
@@ -129,13 +129,13 @@ def test_stat_empty_blob(cli, initialized_store, workspace):
     empty = sample_files.create_empty_file(workspace / "empty.txt")
 
     add_result = cli.add(empty, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert "blob" in stat_result.stdout.lower()
-    assert "0" in stat_result.stdout  # Size should be 0
+    assert "blob" in stat_result.stderr.lower()
+    assert "0" in stat_result.stderr  # Size should be 0
 
 
 def test_stat_empty_tree(cli, initialized_store, workspace):
@@ -144,13 +144,13 @@ def test_stat_empty_tree(cli, initialized_store, workspace):
     empty_dir.mkdir()
 
     add_result = cli.add(empty_dir, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(tree_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert "tree" in stat_result.stdout.lower()
-    assert "0" in stat_result.stdout  # 0 entries
+    assert "tree" in stat_result.stderr.lower()
+    assert "0" in stat_result.stderr  # 0 entries
 
 
 def test_stat_large_blob(cli, initialized_store, workspace):
@@ -162,13 +162,13 @@ def test_stat_large_blob(cli, initialized_store, workspace):
     )
 
     add_result = cli.add(large, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(file_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
     # Should show size around 100KB
-    assert "blob" in stat_result.stdout.lower()
+    assert "blob" in stat_result.stderr.lower()
 
 
 def test_stat_large_tree(cli, initialized_store, workspace):
@@ -179,13 +179,13 @@ def test_stat_large_tree(cli, initialized_store, workspace):
         sample_files.create_sample_file(large_dir / f"f{i}.txt", f"content{i}")
 
     add_result = cli.add(large_dir, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(tree_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert "tree" in stat_result.stdout.lower()
-    assert "50" in stat_result.stdout
+    assert "tree" in stat_result.stderr.lower()
+    assert "50" in stat_result.stderr
 
 
 def test_stat_output_format_consistency(cli, initialized_store, workspace):
@@ -193,11 +193,11 @@ def test_stat_output_format_consistency(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "f1.txt", "content1")
     file2 = sample_files.create_sample_file(workspace / "f2.txt", "content2")
 
-    hash1 = cli.add(file1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(file2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(file1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(file2, root=initialized_store).stderr.strip().split()[0]
 
-    stat1 = cli.stat(hash1, root=initialized_store).stdout
-    stat2 = cli.stat(hash2, root=initialized_store).stdout
+    stat1 = cli.stat(hash1, root=initialized_store).stderr
+    stat2 = cli.stat(hash2, root=initialized_store).stderr
 
     # Both should be blobs with similar output structure
     assert "blob" in stat1.lower()
@@ -207,23 +207,23 @@ def test_stat_output_format_consistency(cli, initialized_store, workspace):
 def test_stat_multiple_times_same_hash(cli, initialized_store, sample_file):
     """Test that stat gives consistent results on multiple calls."""
     add_result = cli.add(sample_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     result1 = cli.stat(file_hash, root=initialized_store)
     result2 = cli.stat(file_hash, root=initialized_store)
     result3 = cli.stat(file_hash, root=initialized_store)
 
-    assert result1.stdout == result2.stdout == result3.stdout
+    assert result1.stderr == result2.stderr == result3.stderr
 
 
 def test_stat_nested_tree(cli, initialized_store, nested_tree):
     """Test stat on nested tree structure."""
     add_result = cli.add(nested_tree, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     stat_result = cli.stat(tree_hash, root=initialized_store)
 
     assert stat_result.returncode == 0
-    assert "tree" in stat_result.stdout.lower()
+    assert "tree" in stat_result.stderr.lower()
     # Should show entry count for immediate children
-    assert any(char.isdigit() for char in stat_result.stdout)
+    assert any(char.isdigit() for char in stat_result.stderr)

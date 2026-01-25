@@ -56,7 +56,7 @@ def test_deep_directory_nesting(cli, initialized_store, workspace):
 
         # Should either succeed or fail gracefully
         if result.returncode == 0:
-            hash_val = result.stdout.strip().split()[0]
+            hash_val = result.stderr.strip().split()[0]
             from helpers.verification import verify_object_exists
 
             verify_object_exists(initialized_store, hash_val)
@@ -111,7 +111,7 @@ def test_large_file_handling(cli, initialized_store, workspace):
         result = cli.add(large_file, root=initialized_store)
 
         if result.returncode == 0:
-            hash_val = result.stdout.strip().split()[0]
+            hash_val = result.stderr.strip().split()[0]
             from helpers.verification import verify_object_exists
 
             verify_object_exists(initialized_store, hash_val)
@@ -137,7 +137,7 @@ def test_many_small_files(cli, initialized_store, workspace):
     result = cli.add(many_dir, root=initialized_store)
 
     if result.returncode == 0:
-        tree_hash = result.stdout.strip().split()[0]
+        tree_hash = result.stderr.strip().split()[0]
         from helpers.verification import verify_object_exists, parse_tree_entries
 
         verify_object_exists(initialized_store, tree_hash)
@@ -158,9 +158,9 @@ def test_zero_byte_files(cli, initialized_store, workspace):
     empty2 = sample_files.create_empty_file(workspace / "empty2.txt")
     empty3 = sample_files.create_empty_file(workspace / "empty3.txt")
 
-    hash1 = cli.add(empty1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(empty2, root=initialized_store).stdout.strip().split()[0]
-    hash3 = cli.add(empty3, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(empty1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(empty2, root=initialized_store).stderr.strip().split()[0]
+    hash3 = cli.add(empty3, root=initialized_store).stderr.strip().split()[0]
 
     # All should have same hash (empty content)
     assert hash1 == hash2 == hash3
@@ -189,8 +189,8 @@ def test_identical_directory_trees(cli, initialized_store, workspace):
         },
     )
 
-    hash1 = cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
-    hash2 = cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
+    hash1 = cli.add(tree1, root=initialized_store).stderr.strip().split()[0]
+    hash2 = cli.add(tree2, root=initialized_store).stderr.strip().split()[0]
 
     # Same content = same hash
     assert hash1 == hash2
@@ -206,11 +206,11 @@ def test_file_with_only_newlines(cli, initialized_store, workspace):
     result = cli.add(newlines_file, root=initialized_store)
 
     assert result.returncode == 0
-    hash_val = result.stdout.strip().split()[0]
+    hash_val = result.stderr.strip().split()[0]
 
     # Cat should preserve newlines (cat returns bytes)
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == b"\n\n\n\n\n"
+    assert cat_result.stderr == b"\n\n\n\n\n"
 
 
 @pytest.mark.edge_case
@@ -221,9 +221,9 @@ def test_single_character_file(cli, initialized_store, workspace):
     result = cli.add(single_char, root=initialized_store)
     assert result.returncode == 0
 
-    hash_val = result.stdout.strip().split()[0]
+    hash_val = result.stderr.strip().split()[0]
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == b"a"
+    assert cat_result.stderr == b"a"
 
 
 @pytest.mark.edge_case
@@ -238,7 +238,7 @@ def test_directory_with_only_subdirectories(cli, initialized_store, workspace):
     result = cli.add(tree_dir, root=initialized_store)
 
     assert result.returncode == 0
-    tree_hash = result.stdout.strip().split()[0]
+    tree_hash = result.stderr.strip().split()[0]
 
     from helpers.verification import parse_tree_entries
 
@@ -264,7 +264,7 @@ def test_rapid_successive_operations(cli, initialized_store, workspace):
     for file in files:
         result = cli.add(file, root=initialized_store)
         if result.returncode == 0:
-            hashes.append(result.stdout.strip().split()[0])
+            hashes.append(result.stderr.strip().split()[0])
 
     # Rapid ref operations
     for i, hash_val in enumerate(hashes[:10]):

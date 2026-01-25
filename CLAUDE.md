@@ -546,6 +546,7 @@ When implementing new features:
 - ✅ `journal` - View operation history
 - ✅ `refs` - Manage named references
 - ✅ `--json` - JSON output for all commands (v0.6.0+)
+- ✅ **Stdout/stderr separation** - Text mode: informational output → stderr; JSON mode: all data → stdout (v0.7.0+)
 
 **Test Coverage:**
 - ✅ 121 Rust unit tests (100% pass rate)

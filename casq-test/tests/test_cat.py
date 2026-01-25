@@ -2,7 +2,7 @@
 
 import pytest
 from fixtures import sample_files
-from helpers.verification import get_object_type
+from helpers.verification import get_object_type, verify_object_exists
 
 
 @pytest.mark.smoke
@@ -12,7 +12,8 @@ def test_cat_text_blob(cli, initialized_store, workspace):
     text_file = sample_files.create_sample_file(workspace / "test.txt", content)
 
     add_result = cli.add(text_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
+    verify_object_exists(initialized_store, file_hash)
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -27,7 +28,7 @@ def test_cat_binary_blob(cli, initialized_store, workspace):
     )
 
     add_result = cli.add(binary, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -41,7 +42,7 @@ def test_cat_empty_blob(cli, initialized_store, workspace):
     empty = sample_files.create_empty_file(workspace / "empty.txt")
 
     add_result = cli.add(empty, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -55,7 +56,7 @@ def test_cat_large_blob(cli, initialized_store, workspace):
     large_file = sample_files.create_sample_file(workspace / "large.txt", content)
 
     add_result = cli.add(large_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -83,7 +84,7 @@ def test_cat_nonexistent_hash(cli, initialized_store):
 def test_cat_tree_hash_error(cli, initialized_store, sample_tree):
     """Test that cat fails when given a tree hash (not a blob)."""
     add_result = cli.add(sample_tree, root=initialized_store)
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stdout.strip()
 
     # Verify it's actually a tree
     assert get_object_type(initialized_store, tree_hash) == "tree"
@@ -104,7 +105,7 @@ def test_cat_content_verification(cli, initialized_store, workspace):
     )
 
     add_result = cli.add(test_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -118,7 +119,7 @@ def test_cat_binary_data_preservation(cli, initialized_store, workspace):
     binary_file.write_bytes(binary_content)
 
     add_result = cli.add(binary_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -133,7 +134,7 @@ def test_cat_multiline_text(cli, initialized_store, workspace):
     text_file = sample_files.create_sample_file(workspace / "multiline.txt", multiline)
 
     add_result = cli.add(text_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -146,7 +147,7 @@ def test_cat_file_with_special_characters(cli, initialized_store, workspace):
     special_file = sample_files.create_sample_file(workspace / "special.txt", special)
 
     add_result = cli.add(special_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -161,7 +162,7 @@ def test_cat_unicode_content(cli, initialized_store, workspace):
     )
 
     add_result = cli.add(unicode_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -177,7 +178,7 @@ def test_cat_file_with_no_trailing_newline(cli, initialized_store, workspace):
     )
 
     add_result = cli.add(test_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -191,7 +192,7 @@ def test_cat_file_with_null_bytes(cli, initialized_store, workspace):
     null_file.write_bytes(null_content)
 
     add_result = cli.add(null_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -205,10 +206,10 @@ def test_cat_same_content_different_files(cli, initialized_store, workspace):
     file2 = sample_files.create_sample_file(workspace / "file2.txt", content)
 
     add1 = cli.add(file1, root=initialized_store)
-    hash1 = add1.stdout.strip().split()[0]
+    hash1 = add1.stdout.strip()
 
     add2 = cli.add(file2, root=initialized_store)
-    hash2 = add2.stdout.strip().split()[0]
+    hash2 = add2.stdout.strip()
 
     # Should be same hash (deduplicated)
     assert hash1 == hash2
@@ -224,7 +225,7 @@ def test_cat_outputs_to_stdout_not_stderr(cli, initialized_store, workspace):
     test_file = sample_files.create_sample_file(workspace / "stdout.txt", content)
 
     add_result = cli.add(test_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -241,7 +242,7 @@ def test_cat_file_with_mixed_newlines(cli, initialized_store, workspace):
     mixed_file.write_bytes(mixed)
 
     add_result = cli.add(mixed_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
@@ -256,7 +257,7 @@ def test_cat_multiple_times_same_hash(cli, initialized_store, workspace):
     test_file = sample_files.create_sample_file(workspace / "test.txt", content)
 
     add_result = cli.add(test_file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stdout.strip()
 
     # Cat multiple times
     result1 = cli.cat(file_hash, root=initialized_store)

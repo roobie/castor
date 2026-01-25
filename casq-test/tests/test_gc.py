@@ -26,7 +26,7 @@ def test_gc_with_refs_keeps_reachable(cli, initialized_store, sample_file):
     """Test that GC preserves objects reachable from refs."""
     # Add file with ref
     add_result = cli.add(sample_file, root=initialized_store, ref_name="keep")
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     # Run GC
     gc_result = cli.gc(root=initialized_store)
@@ -40,7 +40,7 @@ def test_gc_preserves_tree_and_descendants(cli, initialized_store, sample_tree):
     """Test that GC keeps tree and all its blob children."""
     # Add tree with ref
     add_result = cli.add(sample_tree, root=initialized_store, ref_name="tree-ref")
-    tree_hash = add_result.stdout.strip().split()[0]
+    tree_hash = add_result.stderr.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
@@ -62,7 +62,7 @@ def test_gc_deletes_orphaned_blobs(cli, initialized_store, workspace):
     # Add file2 without ref (orphan)
     file2 = sample_files.create_sample_file(workspace / "delete.txt", "delete me")
     add2 = cli.add(file2, root=initialized_store)
-    orphan_hash = add2.stdout.strip().split()[0]
+    orphan_hash = add2.stderr.strip().split()[0]
 
     # Run GC
     cli.gc(root=initialized_store)
@@ -81,12 +81,12 @@ def test_gc_with_multiple_refs(cli, initialized_store, workspace):
 
     hash1 = (
         cli.add(file1, root=initialized_store, ref_name="ref1")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
     hash2 = (
         cli.add(file2, root=initialized_store, ref_name="ref2")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
@@ -103,7 +103,7 @@ def test_gc_with_overlapping_references(cli, initialized_store, workspace):
     file = sample_files.create_sample_file(workspace / "shared.txt", "shared content")
 
     hash1 = (
-        cli.add(file, root=initialized_store, ref_name="ref1").stdout.strip().split()[0]
+        cli.add(file, root=initialized_store, ref_name="ref1").stderr.strip().split()[0]
     )
 
     # Add same content with different ref
@@ -145,7 +145,7 @@ def test_gc_dry_run_statistics(cli, initialized_store, workspace):
 
     # Should report what would be deleted
     assert gc_result.returncode == 0
-    assert len(gc_result.stdout) > 0 or len(gc_result.stderr) > 0
+    assert len(gc_result.stderr) > 0 or len(gc_result.stderr) > 0
 
 
 def test_gc_real_run_statistics(cli, initialized_store, workspace):
@@ -158,14 +158,14 @@ def test_gc_real_run_statistics(cli, initialized_store, workspace):
 
     # Should report results
     assert gc_result.returncode == 0
-    assert len(gc_result.stdout) > 0 or len(gc_result.stderr) > 0
+    assert len(gc_result.stderr) > 0 or len(gc_result.stderr) > 0
 
 
 def test_gc_complex_tree_reachability(cli, initialized_store, nested_tree):
     """Test GC correctly traces through nested tree structures."""
     # Add nested tree with ref
     add_result = cli.add(nested_tree, root=initialized_store, ref_name="nested")
-    add_result.stdout.strip().split()[0]
+    add_result.stderr.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
@@ -189,7 +189,7 @@ def test_gc_after_ref_deletion(cli, initialized_store, sample_file):
     """Test that GC deletes objects after their ref is removed."""
     # Add with ref
     add_result = cli.add(sample_file, root=initialized_store, ref_name="temp")
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     # Remove ref
     cli.refs_rm("temp", root=initialized_store)
@@ -209,7 +209,7 @@ def test_gc_preserves_newly_referenced_objects(cli, initialized_store, workspace
     # Add orphan
     file = sample_files.create_sample_file(workspace / "file.txt", "content")
     add_result = cli.add(file, root=initialized_store)
-    file_hash = add_result.stdout.strip().split()[0]
+    file_hash = add_result.stderr.strip().split()[0]
 
     # Add ref before GC
     cli.refs_add("savedit", file_hash, root=initialized_store)
@@ -240,8 +240,8 @@ def test_gc_with_shared_subtrees(cli, initialized_store, workspace):
         },
     )
 
-    cli.add(tree1, root=initialized_store, ref_name="tree1").stdout.strip().split()[0]
-    cli.add(tree2, root=initialized_store, ref_name="tree2").stdout.strip().split()[0]
+    cli.add(tree1, root=initialized_store, ref_name="tree1").stderr.strip().split()[0]
+    cli.add(tree2, root=initialized_store, ref_name="tree2").stderr.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
@@ -357,7 +357,7 @@ def test_gc_ref_update_scenario(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "v1.txt", "version 1")
     hash1 = (
         cli.add(file1, root=initialized_store, ref_name="current")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
@@ -365,7 +365,7 @@ def test_gc_ref_update_scenario(cli, initialized_store, workspace):
     file2 = sample_files.create_sample_file(workspace / "v2.txt", "version 2")
     hash2 = (
         cli.add(file2, root=initialized_store, ref_name="current")
-        .stdout.strip()
+        .stderr.strip()
         .split()[0]
     )
 
