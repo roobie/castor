@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict
 
+ROOT = Path(__file__).resolve().parent.parent
 
 def assert_json_success(stdout: str, expected_keys: list = None) -> Dict[str, Any]:
     """
@@ -105,7 +106,7 @@ def run_casq(casq_bin, env, *args, input=None, check=False) -> subprocess.Comple
         [str(casq_bin), *args],
         input=input,
         env=env,
-        cwd="/workspace",  # Run from workspace root
+        cwd=ROOT,  # Run from workspace root
         text=True,
         capture_output=True,
         check=check,
