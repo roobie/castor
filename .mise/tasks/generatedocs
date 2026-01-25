@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description = "Generate docs"
+#MISE depends = ["build"]
+
+cargo run -p casq 2>casq/CLI.md

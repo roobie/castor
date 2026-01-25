@@ -127,7 +127,7 @@ fn main() {
     // Determine store root: CLI arg > CASTOR_ROOT env var > ./casq-store default
     let root = cli
         .root
-        .or_else(|| std::env::var("CASTOR_ROOT").ok().map(PathBuf::from))
+        .or_else(|| std::env::var("CASQ_ROOT").ok().map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from("./casq-store"));
 
     // Create output writer
