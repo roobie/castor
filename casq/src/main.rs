@@ -626,15 +626,13 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
                     }
                     text.push_str(&format!("Approx size: {} bytes\n", orphan.approx_size));
                     text.push_str("---\n");
+                } else if let Some(entries) = orphan.entry_count {
+                    text.push_str(&format!(
+                        "{}  {} ({} entries)\n",
+                        orphan.hash, orphan.object_type, entries
+                    ));
                 } else {
-                    if let Some(entries) = orphan.entry_count {
-                        text.push_str(&format!(
-                            "{}  {} ({} entries)\n",
-                            orphan.hash, orphan.object_type, entries
-                        ));
-                    } else {
-                        text.push_str(&format!("{}  {}\n", orphan.hash, orphan.object_type));
-                    }
+                    text.push_str(&format!("{}  {}\n", orphan.hash, orphan.object_type));
                 }
             }
             text
