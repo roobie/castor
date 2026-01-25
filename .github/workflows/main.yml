@@ -47,11 +47,11 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Sync Python dependencies (uv)
-        working-directory: casq-test
+        # working-directory: casq-test
         run: uv sync
 
       - name: Run Python tests (pytest via uv)
-        working-directory: casq-test
+        # working-directory: casq-test
         run: uv run pytest
 
   build_binaries:

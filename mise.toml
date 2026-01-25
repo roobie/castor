@@ -35,10 +35,19 @@ description = "Build the project"
 depends = ["deps", "lint"]
 run = "cargo build"
 
-[tasks.test]
-description = "Run tests"
+[tasks.test_core]
+description = "Run core tests"
 depends = ["build"]
 run = "cargo test"
+[tasks.test_cli]
+description = "Run cli tests"
+depends = ["build"]
+run = "uv run pytest"
+
+[tasks.test]
+description = "Run all tests"
+depends = ["test_core", "test_cli"]
+
 
 [tasks.install]
 description = "Install casq binary"

@@ -1,2 +1,2 @@
 # Ignore Python tests for language statistics
-casq-test/** linguist-vendored
+tests/** linguist-vendored
