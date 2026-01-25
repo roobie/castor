@@ -13,6 +13,7 @@ deps-upgrade:
 
 fmt:
 	cargo fmt --all
+	just -f ./casq-test/justfile fmt
 
 lint:
 	cargo fmt --all -- --check
