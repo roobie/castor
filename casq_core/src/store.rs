@@ -1205,7 +1205,7 @@ mod tests {
         let orphans = store.find_orphan_roots().unwrap();
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0].hash, orphan_hash);
-        assert_eq!(orphans[0].entry_count, 1);
+        assert_eq!(orphans[0].entry_count, Some(1));
     }
 
     // Property-based tests

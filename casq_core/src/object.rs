@@ -37,7 +37,7 @@ pub const VERSION: u8 = 2;
 pub const HEADER_SIZE: usize = 16;
 
 /// Object types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum ObjectType {
     /// A blob (file content).
     Blob = 1,

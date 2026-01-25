@@ -234,14 +234,23 @@ pub struct GcOutput {
 #[derive(Debug, Clone, Serialize)]
 pub struct OrphanInfo {
     pub hash: Hash,
-    pub entry_count: usize,
+    pub object_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_count: Option<usize>,
     pub approx_size: u64,
 }
 
 impl From<OrphanRoot> for OrphanInfo {
     fn from(root: OrphanRoot) -> Self {
+        use casq_core::ObjectType;
+
         Self {
             hash: root.hash,
+            object_type: match root.object_type {
+                ObjectType::Blob => "blob".to_string(),
+                ObjectType::Tree => "tree".to_string(),
+                ObjectType::ChunkList => "chunk_list".to_string(),
+            },
             entry_count: root.entry_count,
             approx_size: root.approx_size,
         }

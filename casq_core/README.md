@@ -118,7 +118,7 @@ casq_core/src/
 # Build the library
 cargo build --release -p casq_core
 
-# Run all tests (92 unit tests + 23 property tests + 1 doctest)
+# Run all tests (121 unit tests + 23 property tests + 1 doctest)
 cargo test -p casq_core
 
 # Run only property tests
@@ -203,7 +203,7 @@ let stats = store.gc(dry_run)?;
 ## Test Coverage
 
 ```
-✓ 92 unit tests passing (100% pass rate)
+✓ 121 unit tests passing (100% pass rate)
 ✓ 23 property tests (generative invariant verification)
 ✓ 1 doctest passing
 ✓ 100% core functionality coverage

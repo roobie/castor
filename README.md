@@ -189,10 +189,10 @@ This is a Rust workspace with two crates:
 - **`casq/`** - CLI binary providing the user interface
 
 **Test Coverage:**
-- 120 Rust unit tests (100% pass rate)
+- 121 Rust unit tests (100% pass rate)
 - 23 property tests (generative invariant verification)
-- 292 Python integration tests (including 26 JSON output tests)
-- Comprehensive coverage of compression, chunking, JSON output, and all core features
+- 313 Python integration tests (including 26 JSON output tests, 19 orphan tests)
+- Comprehensive coverage of compression, chunking, JSON output, orphan discovery, and all core features
 
 ## Documentation
 

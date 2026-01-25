@@ -4,26 +4,29 @@ Comprehensive pytest-based test suite for the casq content-addressed file store 
 
 ## Overview
 
-This test suite provides **248+ tests** achieving 100% CLI surface coverage for casq. It tests all commands, options, error paths, edge cases, and integration scenarios using real end-to-end execution of the casq binary, including comprehensive coverage of v0.4.0 compression and chunking features.
+This test suite provides **313+ tests** achieving 100% CLI surface coverage for casq. It tests all commands, options, error paths, edge cases, and integration scenarios using real end-to-end execution of the casq binary, including comprehensive coverage of compression, chunking, JSON output, orphan discovery, and stdin support.
 
 ### Test Coverage
 
-| Test Module | Tests | Coverage Area |
-|-------------|-------|---------------|
-| `test_init.py` | 18 | Store initialization |
-| `test_add.py` | 45 | Adding files and directories |
-| `test_materialize.py` | 32 | Restoring objects from store |
-| `test_cat.py` | 18 | Outputting blob content |
-| `test_ls.py` | 28 | Listing refs and tree contents |
-| `test_stat.py` | 16 | Object metadata |
-| `test_gc.py` | 22 | Garbage collection |
-| `test_refs.py` | 28 | Reference management |
-| `test_integration.py` | 18 | Multi-command workflows |
-| `test_edge_cases.py` | 12 | Unusual scenarios |
-| `test_hash_stability.py` | 8 | Determinism verification |
-| `test_deduplication.py` | 8 | Content deduplication |
-| `test_compression_chunking.py` | 25+ | Compression & chunking (v0.4.0) |
-| **TOTAL** | **248+** | **100% CLI coverage** |
+| Test Module                    | Tests    | Coverage Area                   |
+|--------------------------------|----------|---------------------------------|
+| `test_init.py`                 | 18       | Store initialization            |
+| `test_add.py`                  | 45       | Adding files and directories    |
+| `test_materialize.py`          | 32       | Restoring objects from store    |
+| `test_cat.py`                  | 18       | Outputting blob content         |
+| `test_ls.py`                   | 28       | Listing refs and tree contents  |
+| `test_stat.py`                 | 16       | Object metadata                 |
+| `test_gc.py`                   | 22       | Garbage collection              |
+| `test_orphans.py`              | 19       | Orphan object discovery         |
+| `test_refs.py`                 | 28       | Reference management            |
+| `test_stdin.py`                | 18       | Stdin input support             |
+| `test_json_output.py`          | 26       | JSON output format              |
+| `test_integration.py`          | 18       | Multi-command workflows         |
+| `test_edge_cases.py`           | 12       | Unusual scenarios               |
+| `test_hash_stability.py`       | 8        | Determinism verification        |
+| `test_deduplication.py`        | 8        | Content deduplication           |
+| `test_compression_chunking.py` | 25       | Compression & chunking          |
+| **TOTAL**                      | **313**  | **100% CLI coverage**           |
 
 ## Quick Start
 
@@ -84,7 +87,7 @@ just ci
 just verify
 ```
 
-#### Using Pytest Directly
+#### Using Pytest Directly (via `uv`)
 
 ```bash
 # Run all tests
@@ -92,32 +95,17 @@ cd casq-test
 pytest
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run specific test file
-pytest tests/test_add.py
+uv run pytest tests/test_add.py
 
 # Run tests matching a pattern
-pytest -k "test_add"
+uv run pytest -k "test_add"
 
 # Run with markers
-pytest -m smoke         # Quick smoke tests
-pytest -m "not slow"    # Skip slow tests
-```
-
-### Expected Output
-
-```
-============================= test session starts ==============================
-collected 248 items
-
-tests/test_init.py::test_init_default PASSED                             [  0%]
-tests/test_init.py::test_init_creates_config_file PASSED                 [  1%]
-...
-tests/test_compression_chunking.py::test_chunked_deduplication PASSED   [99%]
-tests/test_deduplication.py::test_binary_deduplication PASSED           [100%]
-
-========================== 247 passed, 1 xpassed, 2 skipped in 45.00s =========
+uv run pytest -m smoke         # Quick smoke tests
+uv run pytest -m "not slow"    # Skip slow tests
 ```
 
 ## Test Organization

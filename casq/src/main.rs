@@ -614,21 +614,27 @@ fn cmd_orphans(root: &Path, long: bool, output: &OutputWriter) -> Result<()> {
 
     output.write(&data, || {
         if orphan_infos.is_empty() {
-            "No orphaned tree roots found\n".to_string()
+            "No orphaned objects found\n".to_string()
         } else {
             let mut text = String::new();
             for orphan in &orphan_infos {
                 if long {
                     text.push_str(&format!("Hash: {}\n", orphan.hash));
-                    text.push_str("Type: tree\n");
-                    text.push_str(&format!("Entries: {}\n", orphan.entry_count));
+                    text.push_str(&format!("Type: {}\n", orphan.object_type));
+                    if let Some(entries) = orphan.entry_count {
+                        text.push_str(&format!("Entries: {}\n", entries));
+                    }
                     text.push_str(&format!("Approx size: {} bytes\n", orphan.approx_size));
                     text.push_str("---\n");
                 } else {
-                    text.push_str(&format!(
-                        "{}  {} entries\n",
-                        orphan.hash, orphan.entry_count
-                    ));
+                    if let Some(entries) = orphan.entry_count {
+                        text.push_str(&format!(
+                            "{}  {} ({} entries)\n",
+                            orphan.hash, orphan.object_type, entries
+                        ));
+                    } else {
+                        text.push_str(&format!("{}  {}\n", orphan.hash, orphan.object_type));
+                    }
                 }
             }
             text

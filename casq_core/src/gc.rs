@@ -17,18 +17,20 @@ pub struct GcStats {
     pub bytes_freed: u64,
 }
 
-/// Information about an orphaned tree root.
+/// Information about an orphaned object (blob or tree).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct OrphanRoot {
-    /// Hash of the orphaned tree.
+    /// Hash of the orphaned object.
     pub hash: Hash,
-    /// Number of entries in the tree.
-    pub entry_count: usize,
+    /// Type of object (blob, tree, or chunk_list).
+    pub object_type: ObjectType,
+    /// Number of entries (only for trees, None for blobs).
+    pub entry_count: Option<usize>,
     /// Approximate size in bytes (on-disk size).
     pub approx_size: u64,
 }
 
-type EntryInfo = (Hash, usize, u64);
+type EntryInfo = (Hash, ObjectType, Option<usize>, u64);
 type GcResult = (Vec<EntryInfo>, HashSet<Hash>);
 
 impl Store {
@@ -166,33 +168,33 @@ impl Store {
         Ok(stats)
     }
 
-    /// Find orphaned tree roots.
+    /// Find orphaned object roots.
     ///
-    /// Returns a list of unreferenced trees that are not referenced by other
-    /// unreferenced objects. These are "root" trees that were added without refs.
+    /// Returns a list of unreferenced blobs and trees that are not referenced by other
+    /// unreferenced objects. For trees, only returns "root" trees (not child trees).
     pub fn find_orphan_roots(&self) -> Result<Vec<OrphanRoot>> {
         // Mark phase: collect all reachable objects
         let reachable = self.mark_reachable()?;
 
         // Scan unreachable objects
-        let (unreachable_trees, child_refs) = self.scan_unreachable(&reachable)?;
+        let (unreachable_objects, child_refs) = self.scan_unreachable(&reachable)?;
 
-        // Filter for orphan roots (trees not referenced by other unreachable objects)
-        self.filter_orphan_roots(unreachable_trees, &child_refs)
+        // Filter for orphan roots (objects not referenced by other unreachable objects)
+        self.filter_orphan_roots(unreachable_objects, &child_refs)
     }
 
-    /// Scan all objects and identify unreachable trees and their child references.
+    /// Scan all objects and identify unreachable objects and their child references.
     ///
     /// Returns:
-    /// - Vec of (hash, entry_count, size) for unreachable tree objects
+    /// - Vec of (hash, object_type, entry_count, size) for unreachable blob/tree objects
     /// - HashSet of all hashes referenced by unreachable trees
     fn scan_unreachable(&self, reachable: &HashSet<Hash>) -> Result<GcResult> {
-        let mut unreachable_trees = Vec::new();
+        let mut unreachable_objects = Vec::new();
         let mut child_refs = HashSet::new();
 
         let objects_dir = self.root().join("objects").join(self.algorithm().as_str());
         if !objects_dir.exists() {
-            return Ok((unreachable_trees, child_refs));
+            return Ok((unreachable_objects, child_refs));
         }
 
         // Walk all shard directories
@@ -227,49 +229,65 @@ impl Store {
                         continue;
                     }
 
-                    // Check if it's a tree
-                    if let Ok(header) = self.read_object_header(&obj_path)
-                        && header.object_type == ObjectType::Tree
-                    {
+                    // Check object type and collect based on type
+                    if let Ok(header) = self.read_object_header(&obj_path) {
                         // Get size
                         let size = fs::metadata(&obj_path)?.len();
 
-                        // Get tree entries to count them and collect child refs
-                        if let Ok(entries) = self.get_tree(&hash) {
-                            let entry_count = entries.len();
+                        match header.object_type {
+                            ObjectType::Tree => {
+                                // Get tree entries to count them and collect child refs
+                                if let Ok(entries) = self.get_tree(&hash) {
+                                    let entry_count = entries.len();
 
-                            // Collect all child hashes from this unreachable tree
-                            for entry in &entries {
-                                child_refs.insert(entry.hash);
+                                    // Collect all child hashes from this unreachable tree
+                                    for entry in &entries {
+                                        child_refs.insert(entry.hash);
+                                    }
+
+                                    unreachable_objects.push((
+                                        hash,
+                                        ObjectType::Tree,
+                                        Some(entry_count),
+                                        size,
+                                    ));
+                                }
                             }
-
-                            unreachable_trees.push((hash, entry_count, size));
+                            ObjectType::Blob => {
+                                // Include blobs (they have no children)
+                                unreachable_objects.push((hash, ObjectType::Blob, None, size));
+                            }
+                            ObjectType::ChunkList => {
+                                // Skip ChunkLists - they are internal implementation details
+                            }
                         }
                     }
                 }
             }
         }
 
-        Ok((unreachable_trees, child_refs))
+        Ok((unreachable_objects, child_refs))
     }
 
-    /// Filter unreachable trees to find orphan roots.
+    /// Filter unreachable objects to find orphan roots.
     ///
-    /// An orphan root is an unreachable tree that is NOT referenced by any other
-    /// unreachable tree (i.e., it's a top-level tree that was added without a ref).
+    /// An orphan root is an unreachable object (blob or tree) that is NOT referenced
+    /// by any other unreachable object. For trees, this means top-level trees that were
+    /// added without refs. For blobs, this means any unreferenced blob.
     fn filter_orphan_roots(
         &self,
-        unreachable_trees: Vec<(Hash, usize, u64)>,
+        unreachable_objects: Vec<(Hash, ObjectType, Option<usize>, u64)>,
         child_refs: &HashSet<Hash>,
     ) -> Result<Vec<OrphanRoot>> {
         let mut orphan_roots = Vec::new();
 
-        for (hash, entry_count, approx_size) in unreachable_trees {
-            // If this tree is not referenced by any other unreachable tree,
+        for (hash, object_type, entry_count, approx_size) in unreachable_objects {
+            // If this object is not referenced by any other unreachable object,
             // it's an orphan root
             if !child_refs.contains(&hash) {
                 orphan_roots.push(OrphanRoot {
                     hash,
+                    object_type,
                     entry_count,
                     approx_size,
                 });
@@ -454,7 +472,8 @@ mod tests {
         let orphans = store.find_orphan_roots().unwrap();
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0].hash, tree_hash);
-        assert_eq!(orphans[0].entry_count, 1);
+        assert_eq!(orphans[0].object_type, ObjectType::Tree);
+        assert_eq!(orphans[0].entry_count, Some(1));
         assert!(orphans[0].approx_size > 0);
     }
 
@@ -525,20 +544,97 @@ mod tests {
         let orphans = store.find_orphan_roots().unwrap();
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0].hash, parent_hash);
+        assert_eq!(orphans[0].object_type, ObjectType::Tree);
     }
 
     #[test]
-    fn test_find_orphans_blobs_not_reported() {
+    fn test_find_orphans_includes_blobs() {
         let temp_dir = TempDir::new().unwrap();
         let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
 
         // Create orphaned blobs
-        store.put_blob(b"orphan1".as_ref()).unwrap();
-        store.put_blob(b"orphan2".as_ref()).unwrap();
+        let hash1 = store.put_blob(b"orphan1".as_ref()).unwrap();
+        let hash2 = store.put_blob(b"orphan2".as_ref()).unwrap();
 
-        // Should find no orphans (only trees are reported)
+        // Should find both blob orphans
         let orphans = store.find_orphan_roots().unwrap();
-        assert_eq!(orphans.len(), 0);
+        assert_eq!(orphans.len(), 2);
+        assert!(
+            orphans
+                .iter()
+                .any(|o| o.hash == hash1 && o.object_type == ObjectType::Blob)
+        );
+        assert!(
+            orphans
+                .iter()
+                .any(|o| o.hash == hash2 && o.object_type == ObjectType::Blob)
+        );
+        assert!(orphans.iter().all(|o| o.entry_count.is_none()));
+    }
+
+    #[test]
+    fn test_find_orphans_mixed_blobs_and_trees() {
+        use crate::tree::{EntryType, TreeEntry, file_modes};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create orphaned blobs
+        let blob1 = store.put_blob(b"orphan blob 1".as_ref()).unwrap();
+        let blob2 = store.put_blob(b"orphan blob 2".as_ref()).unwrap();
+
+        // Create orphaned tree
+        let tree_blob = store.put_blob(b"tree content".as_ref()).unwrap();
+        let tree_hash = store
+            .put_tree(vec![
+                TreeEntry::new(
+                    EntryType::Blob,
+                    file_modes::REGULAR,
+                    tree_blob,
+                    "file.txt".to_string(),
+                )
+                .unwrap(),
+            ])
+            .unwrap();
+
+        // Should find all orphans (2 standalone blobs + 1 tree)
+        // Note: tree_blob is referenced by the tree, so it won't be an orphan root
+        let orphans = store.find_orphan_roots().unwrap();
+        assert_eq!(orphans.len(), 3);
+
+        // Check for the two standalone blobs
+        assert!(
+            orphans
+                .iter()
+                .any(|o| o.hash == blob1 && o.object_type == ObjectType::Blob)
+        );
+        assert!(
+            orphans
+                .iter()
+                .any(|o| o.hash == blob2 && o.object_type == ObjectType::Blob)
+        );
+
+        // Check for the tree
+        assert!(
+            orphans
+                .iter()
+                .any(|o| o.hash == tree_hash && o.object_type == ObjectType::Tree)
+        );
+
+        // Verify blobs have no entry_count, tree has entry_count
+        let blob_orphans: Vec<_> = orphans
+            .iter()
+            .filter(|o| o.object_type == ObjectType::Blob)
+            .collect();
+        assert_eq!(blob_orphans.len(), 2);
+        assert!(blob_orphans.iter().all(|o| o.entry_count.is_none()));
+
+        let tree_orphans: Vec<_> = orphans
+            .iter()
+            .filter(|o| o.object_type == ObjectType::Tree)
+            .collect();
+        assert_eq!(tree_orphans.len(), 1);
+        assert_eq!(tree_orphans[0].entry_count, Some(1));
     }
 
     #[test]

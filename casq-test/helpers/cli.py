@@ -183,6 +183,14 @@ class casqCLI:
         """Remove a named reference."""
         return self.run("refs", "rm", name, root=root, expect_success=expect_success)
 
-    def orphans(self, root: Optional[Path] = None):
-        """Show orphaned items"""
-        return self.run("orphans", root=root)
+    def orphans(
+        self,
+        root: Optional[Path] = None,
+        long_format: bool = False,
+        expect_success: bool = True,
+    ) -> subprocess.CompletedProcess:
+        """Show orphaned tree roots."""
+        args = ["orphans"]
+        if long_format:
+            args.append("-l")
+        return self.run(*args, root=root, expect_success=expect_success)

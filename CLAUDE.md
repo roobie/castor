@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## General rules
 
-  **CRITICAL**: Documentation in all forms (files in repo, memories etc) MUST be kept updated and current as part of ANY code change. Documentation updates are NOT optional and are NOT deferred - they are completed in the SAME work session as the code implementation. See "Documentation Requirements" section below for detailed guidelines.
+_ _**CRITICAL**: Documentation in all forms (files in repo, memories etc) MUST be kept updated and current as part of ANY code change. Documentation updates are NOT optional and are NOT deferred - they are completed in the SAME work session as the code implementation. See "Documentation Requirements" section below for detailed guidelines.
 
-  Always prefer Serena MCP tools.
+- Always prefer Serena MCP tools.
+
+- `casq` has not yet had a stable release, so backwards compatibility is not a concern.
 
 ## Testing and Quality Assurance Plans
 
@@ -245,7 +247,7 @@ casq cat HASH          # Output blob to stdout
 casq ls HASH [--long]  # List tree contents or show blob info
 casq stat HASH         # Show object metadata
 casq gc [--dry-run]    # Garbage collect unreferenced objects
-casq orphans [--long]  # Find orphaned tree roots (unreferenced trees)
+casq orphans [--long]  # Find orphaned objects (blobs and trees)
 casq journal [--recent N] [--orphans]  # View operation journal
 casq refs add NAME HASH
 casq refs list
@@ -254,25 +256,30 @@ casq refs rm NAME
 
 ### New Features: Orphan Discovery
 
-**Problem:** When running `casq add /path` without `--ref-name`, the tree hash is printed but not stored. These objects become orphaned and will be deleted by GC.
+**Problem:** When running `casq add /path` without `--ref-name`, the hash is printed but not stored. These objects become orphaned and will be deleted by GC.
 
 **Solutions:**
 
-1. **`casq orphans` command** - Discover unreferenced tree roots on-demand:
-   - Identifies trees that exist in the store but have no references
-   - Filters out child trees (only shows top-level orphan roots)
+1. **`casq orphans` command** - Discover unreferenced objects on-demand:
+   - Identifies blobs and trees that exist in the store but have no references
+   - For trees: filters out child trees (only shows top-level orphan roots)
+   - For blobs: shows all unreferenced blobs
    - Use `--long` for detailed information
 
    ```bash
    $ casq orphans
-   abc123def...  15 entries
-   def456abc...  3 entries
+   abc123...  blob
+   def456...  tree (15 entries)
 
    $ casq orphans --long
-   Hash: abc123def456...
+   Hash: abc123...
+   Type: blob
+   Approx size: 4096 bytes
+   ---
+   Hash: def456...
    Type: tree
    Entries: 15
-   Approx size: 1024 bytes
+   Approx size: 8192 bytes
    ---
    ```
 
@@ -535,14 +542,14 @@ When implementing new features:
 - ✅ `ls` - List tree contents
 - ✅ `stat` - Show object metadata
 - ✅ `gc` - Garbage collection (handles all three object types)
-- ✅ `orphans` - Find unreferenced tree roots
+- ✅ `orphans` - Find unreferenced objects (blobs and trees)
 - ✅ `journal` - View operation history
 - ✅ `refs` - Manage named references
 - ✅ `--json` - JSON output for all commands (v0.6.0+)
 
 **Test Coverage:**
-- ✅ 120 Rust unit tests (100% pass rate)
-- ✅ 292 Python integration tests (including 26 JSON output tests)
+- ✅ 121 Rust unit tests (100% pass rate)
+- ✅ 313 Python integration tests (including 26 JSON output tests, 19 orphan tests)
 - ✅ Compression threshold tests
 - ✅ Chunking boundary tests
 - ✅ Round-trip integrity tests
