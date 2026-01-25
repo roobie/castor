@@ -52,19 +52,25 @@ def test_same_content_different_names_dedupe(cli, initialized_store, workspace):
 def test_same_subdirectories_in_different_trees(cli, initialized_store, workspace):
     """Test that identical subdirectories are deduplicated."""
     # Create two trees with identical subdirectory
-    tree1 = sample_files.create_directory_tree(workspace / "tree1", {
-        "unique1.txt": "unique to tree1",
-        "shared": {
-            "common.txt": "shared content",
+    tree1 = sample_files.create_directory_tree(
+        workspace / "tree1",
+        {
+            "unique1.txt": "unique to tree1",
+            "shared": {
+                "common.txt": "shared content",
+            },
         },
-    })
+    )
 
-    tree2 = sample_files.create_directory_tree(workspace / "tree2", {
-        "unique2.txt": "unique to tree2",
-        "shared": {
-            "common.txt": "shared content",  # Identical subdirectory
+    tree2 = sample_files.create_directory_tree(
+        workspace / "tree2",
+        {
+            "unique2.txt": "unique to tree2",
+            "shared": {
+                "common.txt": "shared content",  # Identical subdirectory
+            },
         },
-    })
+    )
 
     initial_count = count_objects(initialized_store)
 
@@ -90,7 +96,9 @@ def test_storage_efficiency_with_deduplication(cli, initialized_store, workspace
 
     # Add 10 files with same content
     for i in range(10):
-        file = sample_files.create_sample_file(workspace / f"file{i}.txt", shared_content)
+        file = sample_files.create_sample_file(
+            workspace / f"file{i}.txt", shared_content
+        )
         cli.add(file, root=initialized_store)
 
     # Should only have 1 blob object (deduplicated)
@@ -126,19 +134,25 @@ def test_dedupe_across_multiple_adds(cli, initialized_store, workspace):
     content = "shared across adds\n"
 
     # First batch
-    dir1 = sample_files.create_directory_tree(workspace / "batch1", {
-        "file1.txt": content,
-        "file2.txt": content,
-    })
+    dir1 = sample_files.create_directory_tree(
+        workspace / "batch1",
+        {
+            "file1.txt": content,
+            "file2.txt": content,
+        },
+    )
 
     hash1 = cli.add(dir1, root=initialized_store).stdout.strip().split()[0]
     count_objects(initialized_store)
 
     # Second batch with same content
-    dir2 = sample_files.create_directory_tree(workspace / "batch2", {
-        "file3.txt": content,
-        "file4.txt": content,
-    })
+    dir2 = sample_files.create_directory_tree(
+        workspace / "batch2",
+        {
+            "file3.txt": content,
+            "file4.txt": content,
+        },
+    )
 
     hash2 = cli.add(dir2, root=initialized_store).stdout.strip().split()[0]
     count_objects(initialized_store)
@@ -153,21 +167,27 @@ def test_dedupe_across_multiple_adds(cli, initialized_store, workspace):
 def test_partial_deduplication_in_snapshot(cli, initialized_store, workspace):
     """Test deduplication when snapshots partially overlap."""
     # Snapshot 1
-    v1 = sample_files.create_directory_tree(workspace / "v1", {
-        "unchanged.txt": "This stays the same",
-        "changed.txt": "Version 1",
-        "removed.txt": "Will be removed",
-    })
+    v1 = sample_files.create_directory_tree(
+        workspace / "v1",
+        {
+            "unchanged.txt": "This stays the same",
+            "changed.txt": "Version 1",
+            "removed.txt": "Will be removed",
+        },
+    )
 
     cli.add(v1, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
     count_v1 = count_objects(initialized_store)
 
     # Snapshot 2 (some files same, some different)
-    v2 = sample_files.create_directory_tree(workspace / "v2", {
-        "unchanged.txt": "This stays the same",  # Same - should dedupe
-        "changed.txt": "Version 2",  # Different content
-        "added.txt": "New file",  # New file
-    })
+    v2 = sample_files.create_directory_tree(
+        workspace / "v2",
+        {
+            "unchanged.txt": "This stays the same",  # Same - should dedupe
+            "changed.txt": "Version 2",  # Different content
+            "added.txt": "New file",  # New file
+        },
+    )
 
     cli.add(v2, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
     count_v2 = count_objects(initialized_store)
@@ -183,16 +203,14 @@ def test_partial_deduplication_in_snapshot(cli, initialized_store, workspace):
 
 def test_binary_deduplication(cli, initialized_store, workspace):
     """Test that binary files with same content deduplicate."""
-    pattern = b"\xDE\xAD\xBE\xEF"
+    pattern = b"\xde\xad\xbe\xef"
     size = 1024
 
     # Create multiple binary files with same content
     binaries = []
     for i in range(5):
         binary = sample_files.create_binary_file(
-            workspace / f"binary{i}.dat",
-            size=size,
-            pattern=pattern
+            workspace / f"binary{i}.dat", size=size, pattern=pattern
         )
         binaries.append(binary)
 

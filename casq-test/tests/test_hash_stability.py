@@ -88,15 +88,13 @@ def test_empty_file_consistent_hash(cli, initialized_store, workspace):
 
 def test_binary_content_hash_stability(cli, initialized_store, workspace):
     """Test hash stability for binary content."""
-    pattern = b"\xDE\xAD\xBE\xEF"
+    pattern = b"\xde\xad\xbe\xef"
     size = 1024
 
     hashes = []
     for i in range(3):
         binary = sample_files.create_binary_file(
-            workspace / f"binary{i}.dat",
-            size=size,
-            pattern=pattern
+            workspace / f"binary{i}.dat", size=size, pattern=pattern
         )
         result = cli.add(binary, root=initialized_store)
         hashes.append(result.stdout.strip().split()[0])
@@ -110,11 +108,17 @@ def test_newline_style_affects_hash(cli, initialized_store, workspace):
     # Different newline styles should produce different hashes
     # because content is different at byte level
 
-    unix_file = sample_files.create_sample_file(workspace / "unix.txt", "line1\nline2\n")
-    windows_file = sample_files.create_sample_file(workspace / "windows.txt", "line1\r\nline2\r\n")
+    unix_file = sample_files.create_sample_file(
+        workspace / "unix.txt", "line1\nline2\n"
+    )
+    windows_file = sample_files.create_sample_file(
+        workspace / "windows.txt", "line1\r\nline2\r\n"
+    )
 
     hash_unix = cli.add(unix_file, root=initialized_store).stdout.strip().split()[0]
-    hash_windows = cli.add(windows_file, root=initialized_store).stdout.strip().split()[0]
+    hash_windows = (
+        cli.add(windows_file, root=initialized_store).stdout.strip().split()[0]
+    )
 
     # Different content = different hash
     assert hash_unix != hash_windows
@@ -122,7 +126,9 @@ def test_newline_style_affects_hash(cli, initialized_store, workspace):
 
 def test_repeated_add_same_hash(cli, initialized_store, workspace):
     """Test that adding same file multiple times always returns same hash."""
-    test_file = sample_files.create_sample_file(workspace / "test.txt", "consistent content")
+    test_file = sample_files.create_sample_file(
+        workspace / "test.txt", "consistent content"
+    )
 
     hashes = []
     for _ in range(10):

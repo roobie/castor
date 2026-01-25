@@ -27,7 +27,9 @@ def test_maximum_filename_length(cli, initialized_store, workspace):
     max_name = "a" * 255 + ".txt"
 
     try:
-        max_file = sample_files.create_sample_file(workspace / max_name, "max length test")
+        max_file = sample_files.create_sample_file(
+            workspace / max_name, "max length test"
+        )
         result = cli.add(max_file, root=initialized_store)
 
         # Should either succeed or fail gracefully
@@ -56,6 +58,7 @@ def test_deep_directory_nesting(cli, initialized_store, workspace):
         if result.returncode == 0:
             hash_val = result.stdout.strip().split()[0]
             from helpers.verification import verify_object_exists
+
             verify_object_exists(initialized_store, hash_val)
         else:
             # Graceful failure is acceptable
@@ -80,7 +83,9 @@ def test_special_characters_in_filenames(cli, initialized_store, workspace):
 
     for name in special_chars:
         try:
-            file = sample_files.create_sample_file(workspace / name, f"content of {name}")
+            file = sample_files.create_sample_file(
+                workspace / name, f"content of {name}"
+            )
             result = cli.add(file, root=initialized_store)
 
             # Should handle gracefully
@@ -100,9 +105,7 @@ def test_large_file_handling(cli, initialized_store, workspace):
 
     try:
         large_file = sample_files.create_binary_file(
-            workspace / "large.bin",
-            size=large_size,
-            pattern=b"\xFF"
+            workspace / "large.bin", size=large_size, pattern=b"\xff"
         )
 
         result = cli.add(large_file, root=initialized_store)
@@ -110,6 +113,7 @@ def test_large_file_handling(cli, initialized_store, workspace):
         if result.returncode == 0:
             hash_val = result.stdout.strip().split()[0]
             from helpers.verification import verify_object_exists
+
             verify_object_exists(initialized_store, hash_val)
         else:
             # Acceptable to have limits
@@ -135,6 +139,7 @@ def test_many_small_files(cli, initialized_store, workspace):
     if result.returncode == 0:
         tree_hash = result.stdout.strip().split()[0]
         from helpers.verification import verify_object_exists, parse_tree_entries
+
         verify_object_exists(initialized_store, tree_hash)
 
         # Verify tree has all entries
@@ -168,15 +173,21 @@ def test_zero_byte_files(cli, initialized_store, workspace):
 def test_identical_directory_trees(cli, initialized_store, workspace):
     """Test that identical directory trees produce same hash."""
     # Create two identical trees
-    tree1 = sample_files.create_directory_tree(workspace / "tree1", {
-        "a.txt": "content a",
-        "b.txt": "content b",
-    })
+    tree1 = sample_files.create_directory_tree(
+        workspace / "tree1",
+        {
+            "a.txt": "content a",
+            "b.txt": "content b",
+        },
+    )
 
-    tree2 = sample_files.create_directory_tree(workspace / "tree2", {
-        "a.txt": "content a",
-        "b.txt": "content b",
-    })
+    tree2 = sample_files.create_directory_tree(
+        workspace / "tree2",
+        {
+            "a.txt": "content a",
+            "b.txt": "content b",
+        },
+    )
 
     hash1 = cli.add(tree1, root=initialized_store).stdout.strip().split()[0]
     hash2 = cli.add(tree2, root=initialized_store).stdout.strip().split()[0]
@@ -189,8 +200,7 @@ def test_identical_directory_trees(cli, initialized_store, workspace):
 def test_file_with_only_newlines(cli, initialized_store, workspace):
     """Test file containing only newline characters."""
     newlines_file = sample_files.create_sample_file(
-        workspace / "newlines.txt",
-        "\n\n\n\n\n"
+        workspace / "newlines.txt", "\n\n\n\n\n"
     )
 
     result = cli.add(newlines_file, root=initialized_store)
@@ -231,6 +241,7 @@ def test_directory_with_only_subdirectories(cli, initialized_store, workspace):
     tree_hash = result.stdout.strip().split()[0]
 
     from helpers.verification import parse_tree_entries
+
     entries = parse_tree_entries(initialized_store, tree_hash)
 
     # Should have 3 tree entries (subdirectories)
@@ -243,7 +254,9 @@ def test_rapid_successive_operations(cli, initialized_store, workspace):
     """Test rapid successive add/gc/refs operations."""
     files = []
     for i in range(20):
-        file = sample_files.create_sample_file(workspace / f"rapid{i}.txt", f"rapid {i}")
+        file = sample_files.create_sample_file(
+            workspace / f"rapid{i}.txt", f"rapid {i}"
+        )
         files.append(file)
 
     # Rapid adds

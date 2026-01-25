@@ -17,15 +17,13 @@ def test_cat_text_blob(cli, initialized_store, workspace):
     cat_result = cli.cat(file_hash, root=initialized_store)
 
     assert cat_result.returncode == 0
-    assert cat_result.stdout == content.encode('utf-8')
+    assert cat_result.stdout == content.encode("utf-8")
 
 
 def test_cat_binary_blob(cli, initialized_store, workspace):
     """Test catting a binary blob."""
     binary = sample_files.create_binary_file(
-        workspace / "binary.dat",
-        size=100,
-        pattern=b"\xDE\xAD\xBE\xEF"
+        workspace / "binary.dat", size=100, pattern=b"\xde\xad\xbe\xef"
     )
 
     add_result = cli.add(binary, root=initialized_store)
@@ -94,21 +92,23 @@ def test_cat_tree_hash_error(cli, initialized_store, sample_tree):
     result = cli.cat(tree_hash, root=initialized_store, expect_success=False)
 
     assert result.returncode != 0
-    stderr_text = result.stderr.decode('utf-8').lower()
+    stderr_text = result.stderr.decode("utf-8").lower()
     assert "tree" in stderr_text or "blob" in stderr_text
 
 
 def test_cat_content_verification(cli, initialized_store, workspace):
     """Test that cat output exactly matches original content."""
     original_content = "Line 1\nLine 2\nLine 3\n"
-    test_file = sample_files.create_sample_file(workspace / "content.txt", original_content)
+    test_file = sample_files.create_sample_file(
+        workspace / "content.txt", original_content
+    )
 
     add_result = cli.add(test_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
-    assert cat_result.stdout == original_content.encode('utf-8')
+    assert cat_result.stdout == original_content.encode("utf-8")
 
 
 def test_cat_binary_data_preservation(cli, initialized_store, workspace):
@@ -137,7 +137,7 @@ def test_cat_multiline_text(cli, initialized_store, workspace):
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
-    assert cat_result.stdout == multiline.encode('utf-8')
+    assert cat_result.stdout == multiline.encode("utf-8")
 
 
 def test_cat_file_with_special_characters(cli, initialized_store, workspace):
@@ -150,13 +150,15 @@ def test_cat_file_with_special_characters(cli, initialized_store, workspace):
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
-    assert cat_result.stdout == special.encode('utf-8')
+    assert cat_result.stdout == special.encode("utf-8")
 
 
 def test_cat_unicode_content(cli, initialized_store, workspace):
     """Test catting file with unicode content."""
     unicode_content = "Hello 世界 🌍\nCafé ☕\n"
-    unicode_file = sample_files.create_sample_file(workspace / "unicode.txt", unicode_content)
+    unicode_file = sample_files.create_sample_file(
+        workspace / "unicode.txt", unicode_content
+    )
 
     add_result = cli.add(unicode_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
@@ -164,20 +166,22 @@ def test_cat_unicode_content(cli, initialized_store, workspace):
     cat_result = cli.cat(file_hash, root=initialized_store)
 
     assert cat_result.returncode == 0
-    assert cat_result.stdout == unicode_content.encode('utf-8')
+    assert cat_result.stdout == unicode_content.encode("utf-8")
 
 
 def test_cat_file_with_no_trailing_newline(cli, initialized_store, workspace):
     """Test catting file without trailing newline."""
     no_newline = "No trailing newline"
-    test_file = sample_files.create_sample_file(workspace / "no_newline.txt", no_newline)
+    test_file = sample_files.create_sample_file(
+        workspace / "no_newline.txt", no_newline
+    )
 
     add_result = cli.add(test_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
-    assert cat_result.stdout == no_newline.encode('utf-8')
+    assert cat_result.stdout == no_newline.encode("utf-8")
 
 
 def test_cat_file_with_null_bytes(cli, initialized_store, workspace):
@@ -211,7 +215,7 @@ def test_cat_same_content_different_files(cli, initialized_store, workspace):
 
     # Cat should work
     cat_result = cli.cat(hash1, root=initialized_store)
-    assert cat_result.stdout == content.encode('utf-8')
+    assert cat_result.stdout == content.encode("utf-8")
 
 
 def test_cat_outputs_to_stdout_not_stderr(cli, initialized_store, workspace):
@@ -224,7 +228,7 @@ def test_cat_outputs_to_stdout_not_stderr(cli, initialized_store, workspace):
 
     cat_result = cli.cat(file_hash, root=initialized_store)
 
-    assert content.encode('utf-8') in cat_result.stdout
+    assert content.encode("utf-8") in cat_result.stdout
     # Stderr should be empty or only contain informational messages
     assert cat_result.stderr == b"" or b"error" not in cat_result.stderr.lower()
 
@@ -259,4 +263,4 @@ def test_cat_multiple_times_same_hash(cli, initialized_store, workspace):
     result2 = cli.cat(file_hash, root=initialized_store)
     result3 = cli.cat(file_hash, root=initialized_store)
 
-    assert result1.stdout == result2.stdout == result3.stdout == content.encode('utf-8')
+    assert result1.stdout == result2.stdout == result3.stdout == content.encode("utf-8")

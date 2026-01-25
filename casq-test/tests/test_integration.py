@@ -12,17 +12,20 @@ def test_full_backup_restore_workflow(cli, casq_store, workspace):
     cli.init(root=casq_store)
 
     # Create test data
-    test_dir = sample_files.create_directory_tree(workspace / "backup", {
-        "docs": {
-            "readme.txt": "Important documentation",
-            "guide.txt": "User guide",
+    test_dir = sample_files.create_directory_tree(
+        workspace / "backup",
+        {
+            "docs": {
+                "readme.txt": "Important documentation",
+                "guide.txt": "User guide",
+            },
+            "data": {
+                "file1.dat": "data1",
+                "file2.dat": "data2",
+            },
+            "config.json": '{"setting": "value"}',
         },
-        "data": {
-            "file1.dat": "data1",
-            "file2.dat": "data2",
-        },
-        "config.json": '{"setting": "value"}',
-    })
+    )
 
     # Add with ref
     add_result = cli.add(test_dir, root=casq_store, ref_name="backup-v1")
@@ -43,26 +46,34 @@ def test_full_backup_restore_workflow(cli, casq_store, workspace):
     assert (restore_dir / "config.json").exists()
 
     # Verify content
-    assert (restore_dir / "docs" / "readme.txt").read_text() == "Important documentation"
+    assert (
+        restore_dir / "docs" / "readme.txt"
+    ).read_text() == "Important documentation"
     assert (restore_dir / "config.json").read_text() == '{"setting": "value"}'
 
 
 def test_multiple_snapshots_with_deduplication(cli, initialized_store, workspace):
     """Test creating multiple snapshots with shared content."""
     # Snapshot 1
-    v1_dir = sample_files.create_directory_tree(workspace / "v1", {
-        "shared.txt": "shared content",
-        "v1-only.txt": "version 1 file",
-    })
+    v1_dir = sample_files.create_directory_tree(
+        workspace / "v1",
+        {
+            "shared.txt": "shared content",
+            "v1-only.txt": "version 1 file",
+        },
+    )
     cli.add(v1_dir, root=initialized_store, ref_name="v1").stdout.strip().split()[0]
 
     initial_count = count_objects(initialized_store)
 
     # Snapshot 2 (shares one file)
-    v2_dir = sample_files.create_directory_tree(workspace / "v2", {
-        "shared.txt": "shared content",  # Same content - should dedupe
-        "v2-only.txt": "version 2 file",
-    })
+    v2_dir = sample_files.create_directory_tree(
+        workspace / "v2",
+        {
+            "shared.txt": "shared content",  # Same content - should dedupe
+            "v2-only.txt": "version 2 file",
+        },
+    )
     cli.add(v2_dir, root=initialized_store, ref_name="v2").stdout.strip().split()[0]
 
     final_count = count_objects(initialized_store)
@@ -109,7 +120,11 @@ def test_gc_interaction_with_refs(cli, initialized_store, workspace):
     """Test GC behavior with ref additions and removals."""
     # Add file with ref
     file1 = sample_files.create_sample_file(workspace / "keep.txt", "keep")
-    hash1 = cli.add(file1, root=initialized_store, ref_name="keeper").stdout.strip().split()[0]
+    hash1 = (
+        cli.add(file1, root=initialized_store, ref_name="keeper")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Add orphan
     file2 = sample_files.create_sample_file(workspace / "temp.txt", "temp")
@@ -120,6 +135,7 @@ def test_gc_interaction_with_refs(cli, initialized_store, workspace):
 
     verify_object_exists(initialized_store, hash1)
     from helpers.verification import get_object_path
+
     assert not get_object_path(initialized_store, hash2).exists()
 
     # Remove ref and GC again
@@ -136,24 +152,39 @@ def test_complex_multicommand_scenario(cli, casq_store, workspace):
     cli.init(root=casq_store)
 
     # 2. Create and add project directory
-    project = sample_files.create_directory_tree(workspace / "project", {
-        "src": {
-            "main.py": "def main(): pass",
-            "utils.py": "def helper(): pass",
+    project = sample_files.create_directory_tree(
+        workspace / "project",
+        {
+            "src": {
+                "main.py": "def main(): pass",
+                "utils.py": "def helper(): pass",
+            },
+            "tests": {
+                "test_main.py": "def test(): assert True",
+            },
+            "README.md": "# Project",
         },
-        "tests": {
-            "test_main.py": "def test(): assert True",
-        },
-        "README.md": "# Project",
-    })
-    hash_v1 = cli.add(project, root=casq_store, ref_name="project-v1").stdout.strip().split()[0]
+    )
+    hash_v1 = (
+        cli.add(project, root=casq_store, ref_name="project-v1")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # 3. Make changes
-    (workspace / "project" / "src" / "main.py").write_text("def main(): print('updated')")
-    sample_files.create_sample_file(workspace / "project" / "CHANGELOG.md", "## v2\n- Updated")
+    (workspace / "project" / "src" / "main.py").write_text(
+        "def main(): print('updated')"
+    )
+    sample_files.create_sample_file(
+        workspace / "project" / "CHANGELOG.md", "## v2\n- Updated"
+    )
 
     # 4. Create new snapshot
-    hash_v2 = cli.add(project, root=casq_store, ref_name="project-v2").stdout.strip().split()[0]
+    hash_v2 = (
+        cli.add(project, root=casq_store, ref_name="project-v2")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # 5. List objects
     assert count_objects(casq_store) > 0
@@ -185,7 +216,9 @@ def test_store_migration_workflow(cli, casq_store, workspace):
 
     # 2. Populate with data
     for i in range(10):
-        file = sample_files.create_sample_file(workspace / f"file{i}.txt", f"content {i}")
+        file = sample_files.create_sample_file(
+            workspace / f"file{i}.txt", f"content {i}"
+        )
         if i % 2 == 0:
             # Keep even-numbered files
             cli.add(file, root=casq_store, ref_name=f"keep{i}")
@@ -222,7 +255,7 @@ def test_cat_ls_stat_consistency(cli, initialized_store, workspace):
 
     # Cat should output content (cat returns bytes)
     cat_result = cli.cat(hash_val, root=initialized_store)
-    assert cat_result.stdout == content.encode('utf-8')
+    assert cat_result.stdout == content.encode("utf-8")
 
     # Stat should show blob type
     stat_result = cli.stat(hash_val, root=initialized_store)
@@ -236,7 +269,11 @@ def test_cat_ls_stat_consistency(cli, initialized_store, workspace):
 def test_nested_tree_full_workflow(cli, initialized_store, workspace, nested_tree):
     """Test full workflow with nested directory structure."""
     # Add
-    hash_val = cli.add(nested_tree, root=initialized_store, ref_name="nested").stdout.strip().split()[0]
+    hash_val = (
+        cli.add(nested_tree, root=initialized_store, ref_name="nested")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Ls should show top-level entries
     ls_result = cli.ls(hash_val, root=initialized_store)
@@ -258,12 +295,15 @@ def test_nested_tree_full_workflow(cli, initialized_store, workspace, nested_tre
 def test_ref_based_restore(cli, initialized_store, workspace):
     """Test restoring from refs rather than direct hashes."""
     # Create backup
-    backup_dir = sample_files.create_directory_tree(workspace / "backup", {
-        "important.txt": "critical data",
-        "docs": {
-            "manual.txt": "documentation",
+    backup_dir = sample_files.create_directory_tree(
+        workspace / "backup",
+        {
+            "important.txt": "critical data",
+            "docs": {
+                "manual.txt": "documentation",
+            },
         },
-    })
+    )
 
     cli.add(backup_dir, root=initialized_store, ref_name="production-backup")
 
@@ -283,23 +323,32 @@ def test_ref_based_restore(cli, initialized_store, workspace):
 def test_incremental_backup_scenario(cli, initialized_store, workspace):
     """Test incremental backup scenario with multiple versions."""
     # Day 1
-    day1 = sample_files.create_directory_tree(workspace / "day1", {
-        "data.txt": "day 1 data",
-    })
+    day1 = sample_files.create_directory_tree(
+        workspace / "day1",
+        {
+            "data.txt": "day 1 data",
+        },
+    )
     cli.add(day1, root=initialized_store, ref_name="backup-day1")
 
     # Day 2 (add file)
-    day2 = sample_files.create_directory_tree(workspace / "day2", {
-        "data.txt": "day 1 data",  # Unchanged - should dedupe
-        "new.txt": "day 2 addition",
-    })
+    day2 = sample_files.create_directory_tree(
+        workspace / "day2",
+        {
+            "data.txt": "day 1 data",  # Unchanged - should dedupe
+            "new.txt": "day 2 addition",
+        },
+    )
     cli.add(day2, root=initialized_store, ref_name="backup-day2")
 
     # Day 3 (modify file)
-    day3 = sample_files.create_directory_tree(workspace / "day3", {
-        "data.txt": "day 3 updated data",  # Changed
-        "new.txt": "day 2 addition",  # Unchanged
-    })
+    day3 = sample_files.create_directory_tree(
+        workspace / "day3",
+        {
+            "data.txt": "day 3 updated data",  # Changed
+            "new.txt": "day 2 addition",  # Unchanged
+        },
+    )
     cli.add(day3, root=initialized_store, ref_name="backup-day3")
 
     # All refs should exist
@@ -336,7 +385,11 @@ def test_large_dataset_workflow(cli, initialized_store, workspace):
         sample_files.create_sample_file(large_dir / f"file{i}.txt", f"content {i}")
 
     # Add
-    hash_val = cli.add(large_dir, root=initialized_store, ref_name="large-set").stdout.strip().split()[0]
+    hash_val = (
+        cli.add(large_dir, root=initialized_store, ref_name="large-set")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Ls should list all
     ls_result = cli.ls(hash_val, root=initialized_store)
@@ -361,7 +414,11 @@ def test_mixed_operations_consistency(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "f1.txt", "file 1")
     file2 = sample_files.create_sample_file(workspace / "f2.txt", "file 2")
 
-    hash1 = cli.add(file1, root=initialized_store, ref_name="ref1").stdout.strip().split()[0]
+    hash1 = (
+        cli.add(file1, root=initialized_store, ref_name="ref1")
+        .stdout.strip()
+        .split()[0]
+    )
     cli.add(file2, root=initialized_store, ref_name="ref2").stdout.strip().split()[0]
 
     # Cat, ls, stat should all work
@@ -387,15 +444,22 @@ def test_mixed_operations_consistency(cli, initialized_store, workspace):
 
 def test_unicode_throughout_workflow(cli, initialized_store, workspace):
     """Test Unicode handling throughout complete workflow."""
-    unicode_dir = sample_files.create_directory_tree(workspace / "unicode", {
-        "café.txt": "Bonjour!",
-        "日本語": {
-            "ファイル.txt": "こんにちは",
+    unicode_dir = sample_files.create_directory_tree(
+        workspace / "unicode",
+        {
+            "café.txt": "Bonjour!",
+            "日本語": {
+                "ファイル.txt": "こんにちは",
+            },
         },
-    })
+    )
 
     # Add
-    hash_val = cli.add(unicode_dir, root=initialized_store, ref_name="unicode-backup").stdout.strip().split()[0]
+    hash_val = (
+        cli.add(unicode_dir, root=initialized_store, ref_name="unicode-backup")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Ls
     ls_result = cli.ls(hash_val, root=initialized_store)
@@ -413,8 +477,8 @@ def test_unicode_throughout_workflow(cli, initialized_store, workspace):
 
 def test_binary_files_workflow(cli, initialized_store, workspace):
     """Test binary file handling through complete workflow."""
-    binary1 = sample_files.create_binary_file(workspace / "b1.bin", 1024, b"\xDE\xAD")
-    binary2 = sample_files.create_binary_file(workspace / "b2.bin", 2048, b"\xBE\xEF")
+    binary1 = sample_files.create_binary_file(workspace / "b1.bin", 1024, b"\xde\xad")
+    binary2 = sample_files.create_binary_file(workspace / "b2.bin", 2048, b"\xbe\xef")
 
     # Add
     hash1 = cli.add(binary1, root=initialized_store).stdout.strip().split()[0]
@@ -441,8 +505,14 @@ def test_store_compaction_scenario(cli, initialized_store, workspace):
     # Add 10 generations
     hashes = []
     for gen in range(10):
-        file = sample_files.create_sample_file(workspace / f"gen{gen}.txt", f"generation {gen}")
-        hash_val = cli.add(file, root=initialized_store, ref_name=f"gen{gen}").stdout.strip().split()[0]
+        file = sample_files.create_sample_file(
+            workspace / f"gen{gen}.txt", f"generation {gen}"
+        )
+        hash_val = (
+            cli.add(file, root=initialized_store, ref_name=f"gen{gen}")
+            .stdout.strip()
+            .split()[0]
+        )
         hashes.append(hash_val)
 
     initial_count = count_objects(initialized_store)

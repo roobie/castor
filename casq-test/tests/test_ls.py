@@ -11,7 +11,10 @@ def test_ls_refs_empty_store(cli, initialized_store):
 
     assert result.returncode == 0
     # Empty store should have no refs
-    assert result.stdout.strip() == "No references (use 'casq add --ref-name' to create one)"
+    assert (
+        result.stdout.strip()
+        == "No references (use 'casq add --ref-name' to create one)"
+    )
 
 
 def test_ls_refs_single_ref(cli, initialized_store, sample_file):
@@ -153,11 +156,14 @@ def test_ls_nonexistent_hash(cli, initialized_store):
 
 def test_ls_tree_entries_sorted(cli, initialized_store, workspace):
     """Test that ls output for tree is sorted."""
-    sorted_dir = sample_files.create_directory_tree(workspace / "sorted", {
-        "zebra.txt": "z",
-        "alpha.txt": "a",
-        "middle.txt": "m",
-    })
+    sorted_dir = sample_files.create_directory_tree(
+        workspace / "sorted",
+        {
+            "zebra.txt": "z",
+            "alpha.txt": "a",
+            "middle.txt": "m",
+        },
+    )
 
     add_result = cli.add(sorted_dir, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -165,7 +171,7 @@ def test_ls_tree_entries_sorted(cli, initialized_store, workspace):
     result = cli.ls(tree_hash, root=initialized_store)
 
     # Output should show sorted names
-    result.stdout.strip().split('\n')
+    result.stdout.strip().split("\n")
     # Extract names (handling various output formats)
     assert "alpha.txt" in result.stdout
     assert "middle.txt" in result.stdout
@@ -180,8 +186,12 @@ def test_ls_tree_shows_file_types(cli, initialized_store, nested_tree):
     result = cli.ls(tree_hash, long_format=True, root=initialized_store)
 
     # Should indicate type (blob vs tree)
-    assert "blob" in result.stdout.lower() or "tree" in result.stdout.lower() or \
-           "file" in result.stdout.lower() or "dir" in result.stdout.lower()
+    assert (
+        "blob" in result.stdout.lower()
+        or "tree" in result.stdout.lower()
+        or "file" in result.stdout.lower()
+        or "dir" in result.stdout.lower()
+    )
 
 
 def test_ls_refs_sorted(cli, initialized_store, workspace):
@@ -193,7 +203,7 @@ def test_ls_refs_sorted(cli, initialized_store, workspace):
     result = cli.ls(root=initialized_store)
 
     # Refs should appear in sorted order
-    lines = [line for line in result.stdout.strip().split('\n') if line]
+    lines = [line for line in result.stdout.strip().split("\n") if line]
     # Verify presence
     assert any("alpha" in line for line in lines)
     assert any("middle" in line for line in lines)
@@ -216,10 +226,7 @@ def test_ls_tree_with_subdirectories(cli, initialized_store, complex_tree):
 
 def test_ls_shows_mode_in_long_format(cli, initialized_store, workspace):
     """Test that long format shows file mode."""
-    sample_files.create_executable_file(
-        workspace / "script.sh",
-        "#!/bin/bash\n"
-    )
+    sample_files.create_executable_file(workspace / "script.sh", "#!/bin/bash\n")
 
     # Add via directory to preserve in tree
     add_result = cli.add(workspace, root=initialized_store)
@@ -234,10 +241,7 @@ def test_ls_shows_mode_in_long_format(cli, initialized_store, workspace):
 
 def test_ls_blob_shows_size(cli, initialized_store, workspace):
     """Test that listing a blob shows its size."""
-    large_file = sample_files.create_sample_file(
-        workspace / "large.txt",
-        "x" * 1000
-    )
+    large_file = sample_files.create_sample_file(workspace / "large.txt", "x" * 1000)
 
     add_result = cli.add(large_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
@@ -263,7 +267,7 @@ def test_ls_tree_shows_entry_count(cli, initialized_store, workspace):
 
     assert result.returncode == 0
     # Should show all 10 files
-    lines = [line for line in result.stdout.strip().split('\n') if line]
+    lines = [line for line in result.stdout.strip().split("\n") if line]
     assert len([line for line in lines if "f" in line and ".txt" in line]) == 10
 
 
@@ -279,10 +283,13 @@ def test_ls_without_hash_lists_refs(cli, initialized_store, sample_file):
 
 def test_ls_tree_with_dotfiles(cli, initialized_store, workspace):
     """Test that ls shows hidden files in tree."""
-    tree_dir = sample_files.create_directory_tree(workspace / "dotfiles", {
-        ".hidden": "hidden",
-        "visible.txt": "visible",
-    })
+    tree_dir = sample_files.create_directory_tree(
+        workspace / "dotfiles",
+        {
+            ".hidden": "hidden",
+            "visible.txt": "visible",
+        },
+    )
 
     add_result = cli.add(tree_dir, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -320,16 +327,23 @@ def test_ls_tree_long_format_shows_hashes(cli, initialized_store, sample_tree):
 
     # Should contain hex hashes (64 char)
     import re
-    hex_pattern = r'[0-9a-f]{64}'
-    assert re.search(hex_pattern, result.stdout) is not None or "file1.txt" in result.stdout
+
+    hex_pattern = r"[0-9a-f]{64}"
+    assert (
+        re.search(hex_pattern, result.stdout) is not None
+        or "file1.txt" in result.stdout
+    )
 
 
 def test_ls_empty_directory_tree(cli, initialized_store, workspace):
     """Test ls on tree containing empty subdirectory."""
-    tree_dir = sample_files.create_directory_tree(workspace / "with_empty", {
-        "file.txt": "content",
-        "empty_subdir": None,
-    })
+    tree_dir = sample_files.create_directory_tree(
+        workspace / "with_empty",
+        {
+            "file.txt": "content",
+            "empty_subdir": None,
+        },
+    )
 
     add_result = cli.add(tree_dir, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -343,10 +357,13 @@ def test_ls_empty_directory_tree(cli, initialized_store, workspace):
 
 def test_ls_unicode_filenames(cli, initialized_store, workspace):
     """Test ls with unicode filenames in tree."""
-    unicode_tree = sample_files.create_directory_tree(workspace / "unicode", {
-        "café.txt": "coffee",
-        "日本語.txt": "japanese",
-    })
+    unicode_tree = sample_files.create_directory_tree(
+        workspace / "unicode",
+        {
+            "café.txt": "coffee",
+            "日本語.txt": "japanese",
+        },
+    )
 
     add_result = cli.add(unicode_tree, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]

@@ -24,8 +24,7 @@ def test_materialize_single_blob(cli, initialized_store, workspace, sample_file)
 def test_materialize_blob_content_identical(cli, initialized_store, workspace):
     """Test that materialized content is identical to original."""
     original = sample_files.create_sample_file(
-        workspace / "original.txt",
-        "test content\nwith multiple lines\n"
+        workspace / "original.txt", "test content\nwith multiple lines\n"
     )
 
     add_result = cli.add(original, root=initialized_store)
@@ -40,8 +39,7 @@ def test_materialize_blob_content_identical(cli, initialized_store, workspace):
 def test_materialize_executable_preserves_mode(cli, initialized_store, workspace):
     """Test that materializing executable file preserves executable bit."""
     exe_file = sample_files.create_executable_file(
-        workspace / "script.sh",
-        "#!/bin/bash\necho hello\n"
+        workspace / "script.sh", "#!/bin/bash\necho hello\n"
     )
     original_mode = exe_file.stat().st_mode
 
@@ -60,7 +58,9 @@ def test_materialize_executable_preserves_mode(cli, initialized_store, workspace
     assert restored_mode & stat.S_IXUSR == original_mode & stat.S_IXUSR
 
 
-def test_materialize_directory_structure(cli, initialized_store, workspace, sample_tree):
+def test_materialize_directory_structure(
+    cli, initialized_store, workspace, sample_tree
+):
     """Test materializing a directory tree."""
     add_result = cli.add(sample_tree, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -73,7 +73,9 @@ def test_materialize_directory_structure(cli, initialized_store, workspace, samp
     assert dest.is_dir()
 
 
-def test_materialize_tree_recreates_files(cli, initialized_store, workspace, sample_tree):
+def test_materialize_tree_recreates_files(
+    cli, initialized_store, workspace, sample_tree
+):
     """Test that materializing tree recreates all files."""
     add_result = cli.add(sample_tree, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -104,7 +106,9 @@ def test_materialize_nested_tree(cli, initialized_store, workspace, nested_tree)
 def test_materialize_invalid_hash_format(cli, initialized_store, workspace):
     """Test materializing with invalid hash format."""
     dest = workspace / "dest.txt"
-    result = cli.materialize("invalid_hash", dest, root=initialized_store, expect_success=False)
+    result = cli.materialize(
+        "invalid_hash", dest, root=initialized_store, expect_success=False
+    )
 
     assert result.returncode != 0
     assert len(result.stderr) > 0
@@ -115,13 +119,17 @@ def test_materialize_nonexistent_hash(cli, initialized_store, workspace):
     fake_hash = "0" * 64
     dest = workspace / "dest.txt"
 
-    result = cli.materialize(fake_hash, dest, root=initialized_store, expect_success=False)
+    result = cli.materialize(
+        fake_hash, dest, root=initialized_store, expect_success=False
+    )
 
     assert result.returncode != 0
     assert len(result.stderr) > 0
 
 
-def test_materialize_destination_already_exists(cli, initialized_store, workspace, sample_file):
+def test_materialize_destination_already_exists(
+    cli, initialized_store, workspace, sample_file
+):
     """Test materializing to existing destination."""
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
@@ -129,13 +137,21 @@ def test_materialize_destination_already_exists(cli, initialized_store, workspac
     dest = workspace / "existing.txt"
     dest.write_text("already exists")
 
-    result = cli.materialize(file_hash, dest, root=initialized_store, expect_success=False)
+    result = cli.materialize(
+        file_hash, dest, root=initialized_store, expect_success=False
+    )
 
     # Should fail or warn about existing file
-    assert result.returncode != 0 or "exist" in result.stderr.lower() or "exist" in result.stdout.lower()
+    assert (
+        result.returncode != 0
+        or "exist" in result.stderr.lower()
+        or "exist" in result.stdout.lower()
+    )
 
 
-def test_materialize_to_nonexistent_parent_directory(cli, initialized_store, workspace, sample_file):
+def test_materialize_to_nonexistent_parent_directory(
+    cli, initialized_store, workspace, sample_file
+):
     """Test materializing to path with non-existent parent."""
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
@@ -143,7 +159,9 @@ def test_materialize_to_nonexistent_parent_directory(cli, initialized_store, wor
     dest = workspace / "nonexistent" / "parent" / "file.txt"
 
     # May succeed (creating parents) or fail gracefully
-    result = cli.materialize(file_hash, dest, root=initialized_store, expect_success=False)
+    result = cli.materialize(
+        file_hash, dest, root=initialized_store, expect_success=False
+    )
 
     if result.returncode == 0:
         assert dest.exists()
@@ -154,7 +172,8 @@ def test_materialize_to_nonexistent_parent_directory(cli, initialized_store, wor
 def test_materialize_permission_denied(cli, initialized_store, workspace, sample_file):
     """Test materializing to location without write permissions."""
     import os
-    if os.name == 'nt':
+
+    if os.name == "nt":
         pytest.skip("Permission test not reliable on Windows")
 
     add_result = cli.add(sample_file, root=initialized_store)
@@ -165,7 +184,9 @@ def test_materialize_permission_denied(cli, initialized_store, workspace, sample
 
     try:
         dest = restricted_dir / "file.txt"
-        result = cli.materialize(file_hash, dest, root=initialized_store, expect_success=False)
+        result = cli.materialize(
+            file_hash, dest, root=initialized_store, expect_success=False
+        )
 
         assert result.returncode != 0
     finally:
@@ -175,8 +196,7 @@ def test_materialize_permission_denied(cli, initialized_store, workspace, sample
 def test_materialize_round_trip_file(cli, initialized_store, workspace):
     """Test full round-trip: add → materialize → verify identical."""
     original = sample_files.create_sample_file(
-        workspace / "original.txt",
-        "Round trip test content\n"
+        workspace / "original.txt", "Round trip test content\n"
     )
 
     # Add
@@ -191,7 +211,9 @@ def test_materialize_round_trip_file(cli, initialized_store, workspace):
     assert original.read_text() == restored.read_text()
 
 
-def test_materialize_round_trip_directory(cli, initialized_store, workspace, complex_tree):
+def test_materialize_round_trip_directory(
+    cli, initialized_store, workspace, complex_tree
+):
     """Test round-trip for complex directory structure."""
     # Add
     add_result = cli.add(complex_tree, root=initialized_store)
@@ -242,9 +264,7 @@ def test_materialize_empty_directory(cli, initialized_store, workspace):
 def test_materialize_binary_file(cli, initialized_store, workspace):
     """Test materializing binary file."""
     binary = sample_files.create_binary_file(
-        workspace / "binary.dat",
-        size=1024,
-        pattern=b"\xDE\xAD\xBE\xEF"
+        workspace / "binary.dat", size=1024, pattern=b"\xde\xad\xbe\xef"
     )
 
     add_result = cli.add(binary, root=initialized_store)
@@ -258,10 +278,7 @@ def test_materialize_binary_file(cli, initialized_store, workspace):
 
 def test_materialize_file_with_unicode_name(cli, initialized_store, workspace):
     """Test materializing file with unicode name."""
-    sample_files.create_sample_file(
-        workspace / "café_☕.txt",
-        "Unicode test"
-    )
+    sample_files.create_sample_file(workspace / "café_☕.txt", "Unicode test")
 
     # Add via directory to preserve name
     add_result = cli.add(workspace, root=initialized_store)
@@ -276,9 +293,7 @@ def test_materialize_file_with_unicode_name(cli, initialized_store, workspace):
 def test_materialize_large_file(cli, initialized_store, workspace):
     """Test materializing large file (1MB)."""
     large = sample_files.create_binary_file(
-        workspace / "large.bin",
-        size=1024 * 1024,
-        pattern=b"\xFF\xEE"
+        workspace / "large.bin", size=1024 * 1024, pattern=b"\xff\xee"
     )
 
     add_result = cli.add(large, root=initialized_store)
@@ -319,10 +334,7 @@ def test_materialize_tree_with_many_files(cli, initialized_store, workspace):
     many_dir.mkdir()
 
     for i in range(50):
-        sample_files.create_sample_file(
-            many_dir / f"file_{i:03d}.txt",
-            f"content {i}"
-        )
+        sample_files.create_sample_file(many_dir / f"file_{i:03d}.txt", f"content {i}")
 
     add_result = cli.add(many_dir, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -338,8 +350,7 @@ def test_materialize_tree_with_many_files(cli, initialized_store, workspace):
 def test_materialize_preserves_file_content_exactly(cli, initialized_store, workspace):
     """Test that materialized content is byte-for-byte identical."""
     original = sample_files.create_sample_file(
-        workspace / "exact.txt",
-        "exact\ncontent\rwith\r\nvarious\nnewlines"
+        workspace / "exact.txt", "exact\ncontent\rwith\r\nvarious\nnewlines"
     )
 
     add_result = cli.add(original, root=initialized_store)
@@ -351,7 +362,9 @@ def test_materialize_preserves_file_content_exactly(cli, initialized_store, work
     assert restored.read_bytes() == original.read_bytes()
 
 
-def test_materialize_tree_preserves_subdirectory_structure(cli, initialized_store, workspace, nested_tree):
+def test_materialize_tree_preserves_subdirectory_structure(
+    cli, initialized_store, workspace, nested_tree
+):
     """Test that subdirectory structure is exactly preserved."""
     add_result = cli.add(nested_tree, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -372,6 +385,7 @@ def test_materialize_from_ref(cli, initialized_store, workspace, sample_file):
 
     # Get hash from ref
     from helpers.verification import list_all_refs
+
     refs = list_all_refs(initialized_store)
     ref_hash = refs["myref"]
 
@@ -383,7 +397,9 @@ def test_materialize_from_ref(cli, initialized_store, workspace, sample_file):
     assert dest.read_text() == sample_file.read_text()
 
 
-def test_materialize_blob_to_stdout_not_file(cli, initialized_store, workspace, sample_file):
+def test_materialize_blob_to_stdout_not_file(
+    cli, initialized_store, workspace, sample_file
+):
     """Test that materialize creates a file (not stdout like cat)."""
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
@@ -396,7 +412,9 @@ def test_materialize_blob_to_stdout_not_file(cli, initialized_store, workspace, 
     assert mat_result.stdout.strip() == "" or "materialize" in mat_result.stdout.lower()
 
 
-def test_materialize_multiple_times_same_hash(cli, initialized_store, workspace, sample_file):
+def test_materialize_multiple_times_same_hash(
+    cli, initialized_store, workspace, sample_file
+):
     """Test materializing same hash to different locations."""
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
@@ -413,10 +431,13 @@ def test_materialize_multiple_times_same_hash(cli, initialized_store, workspace,
 
 def test_materialize_tree_with_dotfiles(cli, initialized_store, workspace):
     """Test materializing tree containing hidden files."""
-    tree_dir = sample_files.create_directory_tree(workspace / "dotfiles", {
-        ".hidden": "hidden content",
-        "visible.txt": "visible",
-    })
+    tree_dir = sample_files.create_directory_tree(
+        workspace / "dotfiles",
+        {
+            ".hidden": "hidden content",
+            "visible.txt": "visible",
+        },
+    )
 
     add_result = cli.add(tree_dir, root=initialized_store)
     tree_hash = add_result.stdout.strip().split()[0]
@@ -443,8 +464,7 @@ def test_materialize_provides_feedback(cli, initialized_store, workspace, sample
 def test_materialize_file_with_special_characters(cli, initialized_store, workspace):
     """Test materializing file with special characters in name."""
     sample_files.create_sample_file(
-        workspace / "file-name_with.special$chars.txt",
-        "special chars test"
+        workspace / "file-name_with.special$chars.txt", "special chars test"
     )
 
     # Add via directory

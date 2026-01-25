@@ -22,8 +22,7 @@ def casq_binary() -> Path:
 
     if not binary_path.exists():
         raise FileNotFoundError(
-            f"casq binary not found at {binary_path}. "
-            "Run 'cargo build -p casq' first."
+            f"casq binary not found at {binary_path}. Run 'cargo build -p casq' first."
         )
 
     return binary_path
@@ -102,10 +101,7 @@ def sample_file(workspace) -> Path:
     Returns:
         Path to sample file
     """
-    return sample_files.create_sample_file(
-        workspace / "sample.txt",
-        "Hello, casq!\n"
-    )
+    return sample_files.create_sample_file(workspace / "sample.txt", "Hello, casq!\n")
 
 
 @pytest.fixture
@@ -120,9 +116,7 @@ def sample_binary(workspace) -> Path:
         Path to binary file
     """
     return sample_files.create_binary_file(
-        workspace / "binary.dat",
-        size=1024,
-        pattern=b"\xDE\xAD\xBE\xEF"
+        workspace / "binary.dat", size=1024, pattern=b"\xde\xad\xbe\xef"
     )
 
 
@@ -138,8 +132,7 @@ def sample_tree(workspace) -> Path:
         Path to tree root
     """
     return sample_files.create_directory_tree(
-        workspace / "tree",
-        sample_files.SIMPLE_TREE
+        workspace / "tree", sample_files.SIMPLE_TREE
     )
 
 
@@ -155,8 +148,7 @@ def nested_tree(workspace) -> Path:
         Path to tree root
     """
     return sample_files.create_directory_tree(
-        workspace / "nested",
-        sample_files.NESTED_TREE
+        workspace / "nested", sample_files.NESTED_TREE
     )
 
 
@@ -172,8 +164,7 @@ def complex_tree(workspace) -> Path:
         Path to tree root
     """
     return sample_files.create_directory_tree(
-        workspace / "complex",
-        sample_files.COMPLEX_TREE
+        workspace / "complex", sample_files.COMPLEX_TREE
     )
 
 
@@ -181,14 +172,7 @@ def complex_tree(workspace) -> Path:
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line(
-        "markers",
-        "smoke: marks tests as smoke tests (quick validation)"
+        "markers", "smoke: marks tests as smoke tests (quick validation)"
     )
-    config.addinivalue_line(
-        "markers",
-        "slow: marks tests as slow running"
-    )
-    config.addinivalue_line(
-        "markers",
-        "edge_case: marks tests as edge case scenarios"
-    )
+    config.addinivalue_line("markers", "slow: marks tests as slow running")
+    config.addinivalue_line("markers", "edge_case: marks tests as edge case scenarios")

@@ -16,12 +16,7 @@ def casq_bin(casq_binary):
 
 def run_casq(casq_bin, *args, **kwargs):
     """Run casq command and return (returncode, stdout, stderr)."""
-    result = subprocess.run(
-        [casq_bin, *args],
-        capture_output=True,
-        text=True,
-        **kwargs
-    )
+    result = subprocess.run([casq_bin, *args], capture_output=True, text=True, **kwargs)
     return result.returncode, result.stdout, result.stderr
 
 
@@ -39,7 +34,9 @@ def test_json_init(casq_bin):
     with tempfile.TemporaryDirectory() as tmpdir:
         store_path = Path(tmpdir) / "store"
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "init")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "init"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -57,7 +54,9 @@ def test_json_add_file(casq_bin):
         test_file.write_text("Hello World")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "add", str(test_file))
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
 
         assert returncode == 0
         assert data is not None
@@ -77,8 +76,14 @@ def test_json_add_with_ref(casq_bin):
         test_file.write_text("Test content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, 
-            "--root", str(store_path), "add", str(test_file), "--ref-name", "myref"
+        returncode, data, stderr = run_casq_json(
+            casq_bin,
+            "--root",
+            str(store_path),
+            "add",
+            str(test_file),
+            "--ref-name",
+            "myref",
         )
 
         assert returncode == 0
@@ -96,9 +101,8 @@ def test_json_add_stdin(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, 
-            "--root", str(store_path), "add", "-",
-            input="Hello from stdin"
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "add", "-", input="Hello from stdin"
         )
 
         assert returncode == 0
@@ -115,7 +119,9 @@ def test_json_ls_refs_empty(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "ls")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "ls"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -133,8 +139,18 @@ def test_json_ls_refs_with_content(casq_bin):
         test_file.write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        run_casq(casq_bin, "--root", str(store_path), "add", str(test_file), "--ref-name", "myref")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "ls")
+        run_casq(
+            casq_bin,
+            "--root",
+            str(store_path),
+            "add",
+            str(test_file),
+            "--ref-name",
+            "myref",
+        )
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "ls"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -154,10 +170,14 @@ def test_json_ls_blob(casq_bin):
         test_file.write_text("Blob content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
         blob_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "ls", blob_hash)
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "ls", blob_hash
+        )
 
         assert returncode == 0
         assert data is not None
@@ -178,10 +198,14 @@ def test_json_ls_tree(casq_bin):
         (test_dir / "file2.txt").write_text("File 2")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_dir))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_dir)
+        )
         tree_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "ls", tree_hash)
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "ls", tree_hash
+        )
 
         assert returncode == 0
         assert data is not None
@@ -204,10 +228,14 @@ def test_json_ls_tree_long(casq_bin):
         (test_dir / "file.txt").write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_dir))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_dir)
+        )
         tree_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "ls", "--long", tree_hash)
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "ls", "--long", tree_hash
+        )
 
         assert returncode == 0
         assert data is not None
@@ -228,10 +256,14 @@ def test_json_stat_blob(casq_bin):
         test_file.write_text("Test content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
         blob_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "stat", blob_hash)
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "stat", blob_hash
+        )
 
         assert returncode == 0
         assert data is not None
@@ -253,10 +285,14 @@ def test_json_stat_tree(casq_bin):
         (test_dir / "file.txt").write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_dir))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_dir)
+        )
         tree_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "stat", tree_hash)
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "stat", tree_hash
+        )
 
         assert returncode == 0
         assert data is not None
@@ -277,11 +313,18 @@ def test_json_materialize(casq_bin):
         dest_path = Path(tmpdir) / "restored.txt"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
         blob_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, 
-            "--root", str(store_path), "materialize", blob_hash, str(dest_path)
+        returncode, data, stderr = run_casq_json(
+            casq_bin,
+            "--root",
+            str(store_path),
+            "materialize",
+            blob_hash,
+            str(dest_path),
         )
 
         assert returncode == 0
@@ -302,17 +345,24 @@ def test_json_cat_error(casq_bin):
         test_file.write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
         blob_hash = stdout.split()[0]
 
-        returncode, stdout_txt, stderr = run_casq_json(casq_bin, "--root", str(store_path), "cat", blob_hash)
+        returncode, stdout_txt, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "cat", blob_hash
+        )
 
         assert returncode == 1
         # Error should be in stderr as JSON
         error_data = json.loads(stderr)
         assert error_data["success"] is False
         assert error_data["result_code"] == 1
-        assert "binary data" in error_data["error"].lower() or "cat" in error_data["error"].lower()
+        assert (
+            "binary data" in error_data["error"].lower()
+            or "cat" in error_data["error"].lower()
+        )
 
 
 def test_json_gc_dry_run(casq_bin):
@@ -325,7 +375,9 @@ def test_json_gc_dry_run(casq_bin):
         run_casq(casq_bin, "--root", str(store_path), "init")
         run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))  # No ref
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "gc", "--dry-run")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "gc", "--dry-run"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -342,7 +394,9 @@ def test_json_gc(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "gc")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "gc"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -359,7 +413,9 @@ def test_json_orphans_empty(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "orphans")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "orphans"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -379,7 +435,9 @@ def test_json_orphans_with_orphan(casq_bin):
         run_casq(casq_bin, "--root", str(store_path), "init")
         run_casq(casq_bin, "--root", str(store_path), "add", str(test_dir))  # No ref
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "orphans")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "orphans"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -398,7 +456,9 @@ def test_json_journal_empty(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "journal")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "journal"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -417,7 +477,9 @@ def test_json_journal_with_entries(casq_bin):
         run_casq(casq_bin, "--root", str(store_path), "init")
         run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "journal")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "journal"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -440,11 +502,13 @@ def test_json_refs_add(casq_bin):
         test_file.write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
+        _, stdout, _ = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
         blob_hash = stdout.split()[0]
 
-        returncode, data, stderr = run_casq_json(casq_bin, 
-            "--root", str(store_path), "refs", "add", "myref", blob_hash
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "refs", "add", "myref", blob_hash
         )
 
         assert returncode == 0
@@ -461,7 +525,9 @@ def test_json_refs_list_empty(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "refs", "list")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "refs", "list"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -478,9 +544,19 @@ def test_json_refs_list_with_refs(casq_bin):
         test_file.write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        _, stdout, _ = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file), "--ref-name", "myref")
+        _, stdout, _ = run_casq(
+            casq_bin,
+            "--root",
+            str(store_path),
+            "add",
+            str(test_file),
+            "--ref-name",
+            "myref",
+        )
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "refs", "list")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "refs", "list"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -498,9 +574,19 @@ def test_json_refs_rm(casq_bin):
         test_file.write_text("Content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        run_casq(casq_bin, "--root", str(store_path), "add", str(test_file), "--ref-name", "myref")
+        run_casq(
+            casq_bin,
+            "--root",
+            str(store_path),
+            "add",
+            str(test_file),
+            "--ref-name",
+            "myref",
+        )
 
-        returncode, data, stderr = run_casq_json(casq_bin, "--root", str(store_path), "refs", "rm", "myref")
+        returncode, data, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "refs", "rm", "myref"
+        )
 
         assert returncode == 0
         assert data is not None
@@ -515,8 +601,8 @@ def test_json_error_invalid_hash(casq_bin):
         store_path = Path(tmpdir) / "store"
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, stdout_txt, stderr = run_casq_json(casq_bin, 
-            "--root", str(store_path), "stat", "invalid_hash"
+        returncode, stdout_txt, stderr = run_casq_json(
+            casq_bin, "--root", str(store_path), "stat", "invalid_hash"
         )
 
         assert returncode == 1
@@ -535,7 +621,9 @@ def test_backward_compatibility_text_output(casq_bin):
         test_file.write_text("Test content")
 
         run_casq(casq_bin, "--root", str(store_path), "init")
-        returncode, stdout, stderr = run_casq(casq_bin, "--root", str(store_path), "add", str(test_file))
+        returncode, stdout, stderr = run_casq(
+            casq_bin, "--root", str(store_path), "add", str(test_file)
+        )
 
         assert returncode == 0
         # Should be text, not JSON
@@ -543,7 +631,10 @@ def test_backward_compatibility_text_output(casq_bin):
         assert test_file.name in stdout
         # Should have a hash (64 hex characters)
         words = stdout.split()
-        assert any(len(word) == 64 and all(c in "0123456789abcdef" for c in word) for word in words)
+        assert any(
+            len(word) == 64 and all(c in "0123456789abcdef" for c in word)
+            for word in words
+        )
 
 
 def test_json_valid_structure(casq_bin):
@@ -562,7 +653,9 @@ def test_json_valid_structure(casq_bin):
         assert "result_code" in data
 
         # Test gc
-        _, data, _ = run_casq_json(casq_bin, "--root", str(store_path), "gc", "--dry-run")
+        _, data, _ = run_casq_json(
+            casq_bin, "--root", str(store_path), "gc", "--dry-run"
+        )
         assert "success" in data
         assert "result_code" in data
 

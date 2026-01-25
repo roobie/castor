@@ -69,6 +69,7 @@ def test_gc_deletes_orphaned_blobs(cli, initialized_store, workspace):
 
     # Orphan should be deleted
     from helpers.verification import get_object_path
+
     orphan_path = get_object_path(initialized_store, orphan_hash)
     assert not orphan_path.exists()
 
@@ -78,8 +79,16 @@ def test_gc_with_multiple_refs(cli, initialized_store, workspace):
     file1 = sample_files.create_sample_file(workspace / "f1.txt", "content1")
     file2 = sample_files.create_sample_file(workspace / "f2.txt", "content2")
 
-    hash1 = cli.add(file1, root=initialized_store, ref_name="ref1").stdout.strip().split()[0]
-    hash2 = cli.add(file2, root=initialized_store, ref_name="ref2").stdout.strip().split()[0]
+    hash1 = (
+        cli.add(file1, root=initialized_store, ref_name="ref1")
+        .stdout.strip()
+        .split()[0]
+    )
+    hash2 = (
+        cli.add(file2, root=initialized_store, ref_name="ref2")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Run GC
     cli.gc(root=initialized_store)
@@ -93,7 +102,9 @@ def test_gc_with_overlapping_references(cli, initialized_store, workspace):
     """Test GC when multiple refs point to same object."""
     file = sample_files.create_sample_file(workspace / "shared.txt", "shared content")
 
-    hash1 = cli.add(file, root=initialized_store, ref_name="ref1").stdout.strip().split()[0]
+    hash1 = (
+        cli.add(file, root=initialized_store, ref_name="ref1").stdout.strip().split()[0]
+    )
 
     # Add same content with different ref
     cli.refs_add("ref2", hash1, root=initialized_store)
@@ -188,6 +199,7 @@ def test_gc_after_ref_deletion(cli, initialized_store, sample_file):
 
     # Object should be deleted
     from helpers.verification import get_object_path
+
     obj_path = get_object_path(initialized_store, file_hash)
     assert not obj_path.exists()
 
@@ -212,15 +224,21 @@ def test_gc_preserves_newly_referenced_objects(cli, initialized_store, workspace
 def test_gc_with_shared_subtrees(cli, initialized_store, workspace):
     """Test GC when multiple trees share subtrees."""
     # Create two trees that might share blobs
-    tree1 = sample_files.create_directory_tree(workspace / "tree1", {
-        "shared.txt": "shared content",
-        "unique1.txt": "unique to tree1",
-    })
+    tree1 = sample_files.create_directory_tree(
+        workspace / "tree1",
+        {
+            "shared.txt": "shared content",
+            "unique1.txt": "unique to tree1",
+        },
+    )
 
-    tree2 = sample_files.create_directory_tree(workspace / "tree2", {
-        "shared.txt": "shared content",  # Same content
-        "unique2.txt": "unique to tree2",
-    })
+    tree2 = sample_files.create_directory_tree(
+        workspace / "tree2",
+        {
+            "shared.txt": "shared content",  # Same content
+            "unique2.txt": "unique to tree2",
+        },
+    )
 
     cli.add(tree1, root=initialized_store, ref_name="tree1").stdout.strip().split()[0]
     cli.add(tree2, root=initialized_store, ref_name="tree2").stdout.strip().split()[0]
@@ -281,7 +299,9 @@ def test_gc_large_store(cli, initialized_store, workspace):
 
     # Add some orphans
     for i in range(10):
-        orphan = sample_files.create_sample_file(workspace / f"orphan{i}.txt", f"orphan{i}")
+        orphan = sample_files.create_sample_file(
+            workspace / f"orphan{i}.txt", f"orphan{i}"
+        )
         cli.add(orphan, root=initialized_store)
 
     # Run GC
@@ -335,17 +355,26 @@ def test_gc_ref_update_scenario(cli, initialized_store, workspace):
     """Test GC after ref is updated to point to new object."""
     # Add file1 with ref
     file1 = sample_files.create_sample_file(workspace / "v1.txt", "version 1")
-    hash1 = cli.add(file1, root=initialized_store, ref_name="current").stdout.strip().split()[0]
+    hash1 = (
+        cli.add(file1, root=initialized_store, ref_name="current")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Update ref to file2
     file2 = sample_files.create_sample_file(workspace / "v2.txt", "version 2")
-    hash2 = cli.add(file2, root=initialized_store, ref_name="current").stdout.strip().split()[0]
+    hash2 = (
+        cli.add(file2, root=initialized_store, ref_name="current")
+        .stdout.strip()
+        .split()[0]
+    )
 
     # Run GC
     cli.gc(root=initialized_store)
 
     # hash1 (old) should be deleted, hash2 (current) should remain
     from helpers.verification import get_object_path
+
     obj1_path = get_object_path(initialized_store, hash1)
     assert not obj1_path.exists()
 

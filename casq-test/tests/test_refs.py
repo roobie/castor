@@ -35,7 +35,9 @@ def test_refs_add_creates_ref_file(cli, initialized_store, sample_file):
 
 def test_refs_add_invalid_hash_format(cli, initialized_store):
     """Test refs add with invalid hash format."""
-    result = cli.refs_add("myref", "invalid_hash", root=initialized_store, expect_success=False)
+    result = cli.refs_add(
+        "myref", "invalid_hash", root=initialized_store, expect_success=False
+    )
 
     assert result.returncode != 0
     assert len(result.stderr) > 0
@@ -55,7 +57,9 @@ def test_refs_add_invalid_name_with_dotdot(cli, initialized_store, sample_file):
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
 
-    result = cli.refs_add("../invalid", file_hash, root=initialized_store, expect_success=False)
+    result = cli.refs_add(
+        "../invalid", file_hash, root=initialized_store, expect_success=False
+    )
 
     assert result.returncode != 0
 
@@ -65,7 +69,9 @@ def test_refs_add_invalid_name_with_slash(cli, initialized_store, sample_file):
     add_result = cli.add(sample_file, root=initialized_store)
     file_hash = add_result.stdout.strip().split()[0]
 
-    cli.refs_add("invalid/name", file_hash, root=initialized_store, expect_success=False)
+    cli.refs_add(
+        "invalid/name", file_hash, root=initialized_store, expect_success=False
+    )
 
     # May fail or may create subdirectory - depends on implementation
     # At minimum, should not allow directory traversal
@@ -205,7 +211,11 @@ def test_refs_rm_nonexistent_ref_error(cli, initialized_store):
 
 def test_refs_add_and_list_integration(cli, initialized_store, workspace):
     """Test integration: add multiple refs and list them."""
-    refs_to_create = {"backup1": "content1", "backup2": "content2", "backup3": "content3"}
+    refs_to_create = {
+        "backup1": "content1",
+        "backup2": "content2",
+        "backup3": "content3",
+    }
     hashes = {}
 
     # Add refs
@@ -253,7 +263,9 @@ def test_refs_add_special_characters_in_name(cli, initialized_store, sample_file
     valid_names = ["backup-2024", "test_ref", "v1.0", "my-backup"]
 
     for name in valid_names:
-        result = cli.refs_add(name, file_hash, root=initialized_store, expect_success=True)
+        result = cli.refs_add(
+            name, file_hash, root=initialized_store, expect_success=True
+        )
         if result.returncode == 0:
             refs = list_all_refs(initialized_store)
             assert name in refs
@@ -278,7 +290,7 @@ def test_refs_update_preserves_history(cli, initialized_store, workspace):
     content = ref_file.read_text()
 
     # Current implementation: last line is current hash
-    lines = [line.strip() for line in content.split('\n') if line.strip()]
+    lines = [line.strip() for line in content.split("\n") if line.strip()]
     assert hash2 in lines
 
 
@@ -304,6 +316,7 @@ def test_refs_remove_doesnt_delete_object(cli, initialized_store, sample_file):
 
     # Object should still exist (GC hasn't run)
     from helpers.verification import verify_object_exists
+
     verify_object_exists(initialized_store, file_hash)
 
 

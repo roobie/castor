@@ -56,7 +56,9 @@ def get_object_path(store_path: Path, hash_str: str, algo: str = "blake3-256") -
     return store_path / "objects" / algo / prefix / rest
 
 
-def verify_object_exists(store_path: Path, hash_str: str, algo: str = "blake3-256") -> bool:
+def verify_object_exists(
+    store_path: Path, hash_str: str, algo: str = "blake3-256"
+) -> bool:
     """
     Verify that an object exists in the store.
 
@@ -77,7 +79,9 @@ def verify_object_exists(store_path: Path, hash_str: str, algo: str = "blake3-25
     return True
 
 
-def read_object_header(store_path: Path, hash_str: str, algo: str = "blake3-256") -> Dict:
+def read_object_header(
+    store_path: Path, hash_str: str, algo: str = "blake3-256"
+) -> Dict:
     """
     Read and parse the header of an object file.
 
@@ -138,7 +142,9 @@ def get_object_type(store_path: Path, hash_str: str, algo: str = "blake3-256") -
         raise ValueError(f"Unknown object type: {type_id}")
 
 
-def read_blob_content(store_path: Path, hash_str: str, algo: str = "blake3-256") -> bytes:
+def read_blob_content(
+    store_path: Path, hash_str: str, algo: str = "blake3-256"
+) -> bytes:
     """
     Read the content of a blob object.
 
@@ -191,12 +197,14 @@ def parse_tree_entries(
             name_len = struct.unpack("B", f.read(1))[0]
             name_bytes = f.read(name_len)
 
-            entries.append({
-                "type": "blob" if entry_type == 1 else "tree",
-                "mode": mode,
-                "hash": hash_bytes.hex(),
-                "name": name_bytes.decode("utf-8"),
-            })
+            entries.append(
+                {
+                    "type": "blob" if entry_type == 1 else "tree",
+                    "mode": mode,
+                    "hash": hash_bytes.hex(),
+                    "name": name_bytes.decode("utf-8"),
+                }
+            )
 
     return entries
 
@@ -245,7 +253,7 @@ def list_all_refs(store_path: Path) -> Dict[str, str]:
         if ref_file.is_file():
             content = ref_file.read_text().strip()
             # Take the last non-empty line
-            lines = [line for line in content.split('\n') if line.strip()]
+            lines = [line for line in content.split("\n") if line.strip()]
             if lines:
                 refs[ref_file.name] = lines[-1]
 

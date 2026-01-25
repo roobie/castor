@@ -100,7 +100,7 @@ def test_init_nonexistent_parent_directory(cli, tmp_path):
 
 def test_init_permission_denied(cli, tmp_path):
     """Test init handles permission denied gracefully."""
-    if os.name == 'nt':
+    if os.name == "nt":
         pytest.skip("Permission test not reliable on Windows")
 
     restricted_dir = tmp_path / "restricted"
@@ -141,6 +141,7 @@ def test_init_empty_store_has_no_objects(cli, casq_store):
     cli.init(root=casq_store)
 
     from helpers.verification import count_objects
+
     assert count_objects(casq_store) == 0
 
 

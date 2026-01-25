@@ -39,8 +39,7 @@ def test_add_file_returns_correct_hash_format(cli, initialized_store, sample_fil
 def test_add_executable_file(cli, initialized_store, workspace):
     """Test adding executable file preserves executable bit."""
     exe_file = sample_files.create_executable_file(
-        workspace / "script.sh",
-        "#!/bin/bash\necho hello\n"
+        workspace / "script.sh", "#!/bin/bash\necho hello\n"
     )
 
     result = cli.add(exe_file, root=initialized_store)
@@ -74,8 +73,7 @@ def test_add_binary_file(cli, initialized_store, sample_binary):
 def test_add_file_with_unicode_name(cli, initialized_store, workspace):
     """Test adding file with unicode characters in name."""
     unicode_file = sample_files.create_sample_file(
-        workspace / "café_☕.txt",
-        "Unicode filename test"
+        workspace / "café_☕.txt", "Unicode filename test"
     )
 
     result = cli.add(unicode_file, root=initialized_store)
@@ -88,8 +86,7 @@ def test_add_file_with_unicode_name(cli, initialized_store, workspace):
 def test_add_file_with_spaces_in_name(cli, initialized_store, workspace):
     """Test adding file with spaces in name."""
     spaced_file = sample_files.create_sample_file(
-        workspace / "file with spaces.txt",
-        "Spaces in filename"
+        workspace / "file with spaces.txt", "Spaces in filename"
     )
 
     result = cli.add(spaced_file, root=initialized_store)
@@ -152,7 +149,9 @@ def test_add_directory_creates_tree_object(cli, initialized_store, sample_tree):
     assert obj_type == "tree"
 
 
-def test_add_directory_creates_blob_objects_for_files(cli, initialized_store, sample_tree):
+def test_add_directory_creates_blob_objects_for_files(
+    cli, initialized_store, sample_tree
+):
     """Test that adding directory also creates blob objects for files."""
     initial_count = count_objects(initialized_store)
 
@@ -180,11 +179,14 @@ def test_add_tree_entries_are_parseable(cli, initialized_store, sample_tree):
 
 def test_add_tree_entries_sorted_by_name(cli, initialized_store, workspace):
     """Test that tree entries are sorted alphabetically."""
-    tree_dir = sample_files.create_directory_tree(workspace / "sorted", {
-        "zebra.txt": "last",
-        "apple.txt": "first",
-        "middle.txt": "middle",
-    })
+    tree_dir = sample_files.create_directory_tree(
+        workspace / "sorted",
+        {
+            "zebra.txt": "last",
+            "apple.txt": "first",
+            "middle.txt": "middle",
+        },
+    )
 
     result = cli.add(tree_dir, root=initialized_store)
     tree_hash = result.stdout.strip().split()[0]
@@ -205,7 +207,7 @@ def test_add_multiple_paths_in_one_command(cli, initialized_store, workspace):
 
     assert result.returncode == 0
     # Should output multiple hashes
-    lines = result.stdout.strip().split('\n')
+    lines = result.stdout.strip().split("\n")
     assert len(lines) >= 2
 
 
@@ -247,12 +249,11 @@ def test_add_without_initialized_store_error(cli, casq_store, sample_file):
 
 def test_add_permission_denied_error(cli, initialized_store, workspace):
     """Test adding file without read permissions."""
-    if os.name == 'nt':
+    if os.name == "nt":
         pytest.skip("Permission test not reliable on Windows")
 
     restricted_file = sample_files.create_sample_file(
-        workspace / "restricted.txt",
-        "secret"
+        workspace / "restricted.txt", "secret"
     )
     restricted_file.chmod(0o000)
 
@@ -268,8 +269,7 @@ def test_add_very_long_filename(cli, initialized_store, workspace):
     # Max filename length is typically 255 bytes
     long_name = "a" * 200 + ".txt"
     long_file = sample_files.create_sample_file(
-        workspace / long_name,
-        "long filename test"
+        workspace / long_name, "long filename test"
     )
 
     result = cli.add(long_file, root=initialized_store)
@@ -282,7 +282,7 @@ def test_add_large_file(cli, initialized_store, workspace):
     large_file = sample_files.create_binary_file(
         workspace / "large.bin",
         size=1024 * 1024,  # 1MB
-        pattern=b"\xFF\xEE\xDD\xCC"
+        pattern=b"\xff\xee\xdd\xcc",
     )
 
     result = cli.add(large_file, root=initialized_store)
@@ -299,10 +299,7 @@ def test_add_many_files_in_directory(cli, initialized_store, workspace):
 
     # Create 100 small files
     for i in range(100):
-        sample_files.create_sample_file(
-            many_dir / f"file_{i:03d}.txt",
-            f"content {i}"
-        )
+        sample_files.create_sample_file(many_dir / f"file_{i:03d}.txt", f"content {i}")
 
     result = cli.add(many_dir, root=initialized_store)
 
@@ -352,11 +349,7 @@ def test_add_preserves_directory_mode(cli, initialized_store, workspace):
 
 def test_add_file_mode_preserved(cli, initialized_store, workspace):
     """Test that file mode is preserved in tree entry."""
-    sample_files.create_file_with_mode(
-        workspace / "executable",
-        "#!/bin/bash\n",
-        0o755
-    )
+    sample_files.create_file_with_mode(workspace / "executable", "#!/bin/bash\n", 0o755)
 
     # Add via parent directory to get tree entry
     result = cli.add(workspace, root=initialized_store)
@@ -433,16 +426,19 @@ def test_add_mixed_files_and_directories(cli, initialized_store, workspace):
     result = cli.add(file1, dir1, root=initialized_store)
 
     assert result.returncode == 0
-    lines = result.stdout.strip().split('\n')
+    lines = result.stdout.strip().split("\n")
     assert len(lines) == 2
 
 
 def test_add_with_dot_files(cli, initialized_store, workspace):
     """Test adding directory with hidden files (starting with dot)."""
-    tree_dir = sample_files.create_directory_tree(workspace / "dotfiles", {
-        ".hidden": "hidden content",
-        "visible.txt": "visible content",
-    })
+    tree_dir = sample_files.create_directory_tree(
+        workspace / "dotfiles",
+        {
+            ".hidden": "hidden content",
+            "visible.txt": "visible content",
+        },
+    )
 
     result = cli.add(tree_dir, root=initialized_store)
 
@@ -479,8 +475,7 @@ def test_add_single_blob_object_type(cli, initialized_store, sample_file):
 def test_add_file_with_newlines(cli, initialized_store, workspace):
     """Test adding file with various newline styles."""
     file_with_newlines = sample_files.create_sample_file(
-        workspace / "newlines.txt",
-        "line1\nline2\r\nline3\r"
+        workspace / "newlines.txt", "line1\nline2\r\nline3\r"
     )
 
     result = cli.add(file_with_newlines, root=initialized_store)
@@ -493,9 +488,7 @@ def test_add_file_with_newlines(cli, initialized_store, workspace):
 def test_add_binary_file_with_null_bytes(cli, initialized_store, workspace):
     """Test adding binary file containing null bytes."""
     null_file = sample_files.create_binary_file(
-        workspace / "nulls.bin",
-        size=100,
-        pattern=b"\x00"
+        workspace / "nulls.bin", size=100, pattern=b"\x00"
     )
 
     result = cli.add(null_file, root=initialized_store)
@@ -509,6 +502,7 @@ def test_add_relative_path(cli, initialized_store, workspace):
     """Test adding file using relative path."""
     # Change to workspace directory for relative path
     import os
+
     original_cwd = os.getcwd()
     try:
         os.chdir(workspace)
@@ -523,8 +517,7 @@ def test_add_relative_path(cli, initialized_store, workspace):
 def test_add_absolute_path(cli, initialized_store, workspace):
     """Test adding file using absolute path."""
     abs_file = sample_files.create_sample_file(
-        workspace / "absolute.txt",
-        "absolute path test"
+        workspace / "absolute.txt", "absolute path test"
     )
 
     result = cli.add(abs_file.absolute(), root=initialized_store)

@@ -11,7 +11,9 @@ from helpers.verification import (
 )
 
 
-def get_compression_type(store_path: Path, hash_str: str, algo: str = "blake3-256") -> int:
+def get_compression_type(
+    store_path: Path, hash_str: str, algo: str = "blake3-256"
+) -> int:
     """
     Get the compression type from object header (v2 format).
 
@@ -39,7 +41,9 @@ def get_compression_type(store_path: Path, hash_str: str, algo: str = "blake3-25
             return 0  # v1 doesn't support compression
 
 
-def get_object_version(store_path: Path, hash_str: str, algo: str = "blake3-256") -> int:
+def get_object_version(
+    store_path: Path, hash_str: str, algo: str = "blake3-256"
+) -> int:
     """Get the version of an object."""
     header = read_object_header(store_path, hash_str, algo)
     return header["version"]
@@ -62,9 +66,7 @@ def test_small_file_not_compressed(cli, initialized_store, workspace):
     """Test that small files (< 4KB) are not compressed."""
     # Create a 2KB file
     small_file = sample_files.create_binary_file(
-        workspace / "small.bin",
-        size=2048,
-        pattern=b"AAAA"
+        workspace / "small.bin", size=2048, pattern=b"AAAA"
     )
 
     result = cli.add(small_file, root=initialized_store)
@@ -82,9 +84,7 @@ def test_medium_file_is_compressed(cli, initialized_store, workspace):
     """Test that files >= 4KB are compressed with zstd."""
     # Create a 10KB file with repetitive data (highly compressible)
     medium_file = sample_files.create_binary_file(
-        workspace / "medium.bin",
-        size=10 * 1024,
-        pattern=b"ABCD"
+        workspace / "medium.bin", size=10 * 1024, pattern=b"ABCD"
     )
 
     result = cli.add(medium_file, root=initialized_store)
@@ -108,7 +108,7 @@ def test_compression_reduces_storage(cli, initialized_store, workspace):
     compressible_file = sample_files.create_binary_file(
         workspace / "compressible.bin",
         size=50 * 1024,
-        pattern=b"AAAA"  # Very repetitive = high compression ratio
+        pattern=b"AAAA",  # Very repetitive = high compression ratio
     )
 
     result = cli.add(compressible_file, root=initialized_store)
@@ -120,8 +120,9 @@ def test_compression_reduces_storage(cli, initialized_store, workspace):
 
     # Compressed size should be significantly smaller
     # (For repetitive data, expect >10x compression)
-    assert stored_size < original_size / 5, \
+    assert stored_size < original_size / 5, (
         f"Stored size {stored_size} should be much smaller than original {original_size}"
+    )
 
 
 def test_compressed_file_round_trip(cli, initialized_store, workspace):
@@ -129,7 +130,7 @@ def test_compressed_file_round_trip(cli, initialized_store, workspace):
     # Create compressible file
     original_file = sample_files.create_sample_file(
         workspace / "original.txt",
-        "Hello World! " * 1000  # Repetitive text, ~13KB
+        "Hello World! " * 1000,  # Repetitive text, ~13KB
     )
 
     # Add to store
@@ -143,13 +144,17 @@ def test_compressed_file_round_trip(cli, initialized_store, workspace):
     # Materialize
     restored_dir = workspace / "restored"
     restored_dir.mkdir()
-    result = cli.materialize(hash_output, restored_dir / "restored.txt", root=initialized_store)
+    result = cli.materialize(
+        hash_output, restored_dir / "restored.txt", root=initialized_store
+    )
     assert result.returncode == 0
 
     # Verify content matches
     original_content = original_file.read_text()
     restored_content = (restored_dir / "restored.txt").read_text()
-    assert restored_content == original_content, "Restored content should match original"
+    assert restored_content == original_content, (
+        "Restored content should match original"
+    )
 
 
 @pytest.mark.slow
@@ -157,9 +162,7 @@ def test_large_file_is_chunked(cli, initialized_store, workspace):
     """Test that files >= 1MB are chunked using FastCDC."""
     # Create a 2MB file
     large_file = sample_files.create_binary_file(
-        workspace / "large.bin",
-        size=2 * 1024 * 1024,
-        pattern=b"0123456789ABCDEF"
+        workspace / "large.bin", size=2 * 1024 * 1024, pattern=b"0123456789ABCDEF"
     )
 
     result = cli.add(large_file, root=initialized_store)
@@ -182,7 +185,7 @@ def test_chunked_file_creates_multiple_chunks(cli, initialized_store, workspace)
     # Section 1: All 'A's
     # Section 2: All 'B's
     # Section 3: All 'C's
-    data = b'A' * (1024 * 1024) + b'B' * (1024 * 1024) + b'C' * (1024 * 1024)
+    data = b"A" * (1024 * 1024) + b"B" * (1024 * 1024) + b"C" * (1024 * 1024)
     large_file = workspace / "large.bin"
     large_file.write_bytes(data)
 
@@ -200,8 +203,9 @@ def test_chunked_file_creates_multiple_chunks(cli, initialized_store, workspace)
     # Total: ~7 objects minimum
     # However, chunks within a section might dedupe, so expect at least 3 total
     objects_created = final_count - initial_count
-    assert objects_created >= 2, \
+    assert objects_created >= 2, (
         f"Expected at least 2 objects (1 ChunkList + 1+ chunks), got {objects_created}"
+    )
 
     # Verify it's actually a ChunkList
     obj_type = read_object_header(initialized_store, hash_output)["type"]
@@ -213,9 +217,7 @@ def test_chunked_file_round_trip(cli, initialized_store, workspace):
     """Test that chunked files can be materialized correctly."""
     # Create 3MB file with pattern
     original_file = sample_files.create_binary_file(
-        workspace / "chunked.bin",
-        size=3 * 1024 * 1024,
-        pattern=b"CHUNKED!"
+        workspace / "chunked.bin", size=3 * 1024 * 1024, pattern=b"CHUNKED!"
     )
     original_content = original_file.read_bytes()
 
@@ -230,12 +232,16 @@ def test_chunked_file_round_trip(cli, initialized_store, workspace):
     # Materialize
     restored_dir = workspace / "restored"
     restored_dir.mkdir()
-    result = cli.materialize(hash_output, restored_dir / "chunked.bin", root=initialized_store)
+    result = cli.materialize(
+        hash_output, restored_dir / "chunked.bin", root=initialized_store
+    )
     assert result.returncode == 0
 
     # Verify content matches byte-for-byte
     restored_content = (restored_dir / "chunked.bin").read_bytes()
-    assert restored_content == original_content, "Restored content should match original"
+    assert restored_content == original_content, (
+        "Restored content should match original"
+    )
     assert len(restored_content) == 3 * 1024 * 1024, "Restored size should match"
 
 
@@ -244,7 +250,7 @@ def test_chunked_file_cat_works(cli, initialized_store, workspace):
     # Create 1.5MB file
     large_file = sample_files.create_sample_file(
         workspace / "large.txt",
-        "Line of text\n" * 100000  # ~1.3MB
+        "Line of text\n" * 100000,  # ~1.3MB
     )
     original_content = large_file.read_text()
 
@@ -256,7 +262,11 @@ def test_chunked_file_cat_works(cli, initialized_store, workspace):
     assert cat_result.returncode == 0
 
     # Verify output matches original (stdout is bytes, decode it)
-    cat_output = cat_result.stdout.decode('utf-8') if isinstance(cat_result.stdout, bytes) else cat_result.stdout
+    cat_output = (
+        cat_result.stdout.decode("utf-8")
+        if isinstance(cat_result.stdout, bytes)
+        else cat_result.stdout
+    )
     assert cat_output == original_content, "Cat output should match original"
 
 
@@ -264,14 +274,10 @@ def test_compressed_deduplication(cli, initialized_store, workspace):
     """Test that compression doesn't break deduplication."""
     # Create two identical compressible files
     file1 = sample_files.create_binary_file(
-        workspace / "file1.bin",
-        size=10 * 1024,
-        pattern=b"SAME"
+        workspace / "file1.bin", size=10 * 1024, pattern=b"SAME"
     )
     file2 = sample_files.create_binary_file(
-        workspace / "file2.bin",
-        size=10 * 1024,
-        pattern=b"SAME"
+        workspace / "file2.bin", size=10 * 1024, pattern=b"SAME"
     )
 
     # Add first file
@@ -322,8 +328,9 @@ def test_chunked_deduplication(cli, initialized_store, workspace):
     objects_for_file2 = count2 - count1
 
     # File2 should create fewer objects due to shared chunks
-    assert objects_for_file2 < objects_for_file1, \
+    assert objects_for_file2 < objects_for_file1, (
         f"File2 should create fewer objects ({objects_for_file2}) than file1 ({objects_for_file1}) due to chunk sharing"
+    )
 
 
 def test_compression_on_tree_with_mixed_sizes(cli, initialized_store, workspace):
@@ -335,10 +342,14 @@ def test_compression_on_tree_with_mixed_sizes(cli, initialized_store, workspace)
     sample_files.create_binary_file(tree_dir / "small.bin", size=1024, pattern=b"S")
 
     # Medium file (compression)
-    sample_files.create_binary_file(tree_dir / "medium.bin", size=10 * 1024, pattern=b"M")
+    sample_files.create_binary_file(
+        tree_dir / "medium.bin", size=10 * 1024, pattern=b"M"
+    )
 
     # Large file (chunking)
-    sample_files.create_binary_file(tree_dir / "large.bin", size=1500 * 1024, pattern=b"L")
+    sample_files.create_binary_file(
+        tree_dir / "large.bin", size=1500 * 1024, pattern=b"L"
+    )
 
     result = cli.add(tree_dir, root=initialized_store)
     assert result.returncode == 0
@@ -351,9 +362,7 @@ def test_gc_works_with_chunked_objects(cli, initialized_store, workspace):
     """Test that GC correctly handles chunked objects and their chunks."""
     # Create chunked file with ref
     large_file = sample_files.create_binary_file(
-        workspace / "large.bin",
-        size=2 * 1024 * 1024,
-        pattern=b"GCTEST"
+        workspace / "large.bin", size=2 * 1024 * 1024, pattern=b"GCTEST"
     )
 
     result = cli.add(large_file, root=initialized_store, ref_name="keep")
@@ -361,9 +370,7 @@ def test_gc_works_with_chunked_objects(cli, initialized_store, workspace):
 
     # Create another chunked file without ref (orphan)
     orphan_file = sample_files.create_binary_file(
-        workspace / "orphan.bin",
-        size=2 * 1024 * 1024,
-        pattern=b"ORPHAN"
+        workspace / "orphan.bin", size=2 * 1024 * 1024, pattern=b"ORPHAN"
     )
 
     cli.add(orphan_file, root=initialized_store)
@@ -384,15 +391,21 @@ def test_gc_works_with_chunked_objects(cli, initialized_store, workspace):
     # Should still be able to materialize
     restored_dir = workspace / "restored"
     restored_dir.mkdir()
-    result = cli.materialize(hash_output, restored_dir / "large.bin", root=initialized_store)
+    result = cli.materialize(
+        hash_output, restored_dir / "large.bin", root=initialized_store
+    )
     assert result.returncode == 0
 
 
 def test_object_format_version(cli, initialized_store, workspace):
     """Test that new objects use v2 format."""
     # Add various files
-    small = sample_files.create_binary_file(workspace / "small.bin", size=1024, pattern=b"S")
-    medium = sample_files.create_binary_file(workspace / "medium.bin", size=10 * 1024, pattern=b"M")
+    small = sample_files.create_binary_file(
+        workspace / "small.bin", size=1024, pattern=b"S"
+    )
+    medium = sample_files.create_binary_file(
+        workspace / "medium.bin", size=10 * 1024, pattern=b"M"
+    )
 
     result1 = cli.add(small, root=initialized_store)
     hash1 = result1.stdout.strip().split()[0]
@@ -412,7 +425,11 @@ def test_compression_with_various_data_patterns(cli, initialized_store, workspac
     """Test compression with different data patterns."""
     test_cases = [
         ("highly_compressible.bin", b"A" * 10240, "Highly repetitive data"),
-        ("text.txt", b"The quick brown fox jumps over the lazy dog.\n" * 200, "Natural text"),
+        (
+            "text.txt",
+            b"The quick brown fox jumps over the lazy dog.\n" * 200,
+            "Natural text",
+        ),
         ("random.bin", bytes(range(256)) * 40, "Sequential pattern"),
     ]
 
@@ -442,7 +459,7 @@ def test_chunking_boundary_cases(cli, initialized_store, workspace):
     above_threshold = sample_files.create_binary_file(
         workspace / "above.bin",
         size=1024 * 1024 + 512 * 1024,  # 1.5MB
-        pattern=b"X"
+        pattern=b"X",
     )
 
     result = cli.add(above_threshold, root=initialized_store)
@@ -452,9 +469,7 @@ def test_chunking_boundary_cases(cli, initialized_store, workspace):
 
     # Well under threshold (512KB) - should NOT be chunked
     well_under = sample_files.create_binary_file(
-        workspace / "well_under.bin",
-        size=512 * 1024,
-        pattern=b"Y"
+        workspace / "well_under.bin", size=512 * 1024, pattern=b"Y"
     )
 
     result = cli.add(well_under, root=initialized_store)
@@ -466,9 +481,7 @@ def test_chunking_boundary_cases(cli, initialized_store, workspace):
 def test_stat_shows_compression_info(cli, initialized_store, workspace):
     """Test that stat command works with compressed objects."""
     compressed_file = sample_files.create_binary_file(
-        workspace / "compressed.bin",
-        size=20 * 1024,
-        pattern=b"COMP"
+        workspace / "compressed.bin", size=20 * 1024, pattern=b"COMP"
     )
 
     result = cli.add(compressed_file, root=initialized_store)
@@ -485,5 +498,6 @@ def test_stat_shows_compression_info(cli, initialized_store, workspace):
     # Check that on-disk size is smaller than original (compression worked)
     stored_size = get_stored_size(initialized_store, hash_output)
     original_size = 20 * 1024
-    assert stored_size < original_size, \
+    assert stored_size < original_size, (
         f"Compressed object size {stored_size} should be smaller than original {original_size}"
+    )

@@ -19,7 +19,9 @@ def test_stat_blob_shows_type(cli, initialized_store, sample_file):
     assert "blob" in stat_result.stdout.lower()
 
 
-def test_add_directory_with_depth_more_than_one_and_check_stat_is_correct(cli, initialized_store, complex_tree):
+def test_add_directory_with_depth_more_than_one_and_check_stat_is_correct(
+    cli, initialized_store, complex_tree
+):
     """
     This test shall make sure that a tree with depth > 1 computes the correct hash value and size
     """
@@ -156,7 +158,7 @@ def test_stat_large_blob(cli, initialized_store, workspace):
     large = sample_files.create_binary_file(
         workspace / "large.bin",
         size=1024 * 100,  # 100KB
-        pattern=b"\xFF"
+        pattern=b"\xff",
     )
 
     add_result = cli.add(large, root=initialized_store)

@@ -54,6 +54,7 @@ class casqCLI:
 
         # Prepare environment
         import os
+
         final_env = os.environ.copy()
         if env:
             final_env.update(env)
@@ -113,7 +114,9 @@ class casqCLI:
         expect_success: bool = True,
     ) -> subprocess.CompletedProcess:
         """Output a blob to stdout."""
-        return self.run("cat", hash_str, root=root, expect_success=expect_success, binary_mode=True)
+        return self.run(
+            "cat", hash_str, root=root, expect_success=expect_success, binary_mode=True
+        )
 
     def ls(
         self,
@@ -179,3 +182,7 @@ class casqCLI:
     ) -> subprocess.CompletedProcess:
         """Remove a named reference."""
         return self.run("refs", "rm", name, root=root, expect_success=expect_success)
+
+    def orphans(self, root: Optional[Path] = None):
+        """Show orphaned items"""
+        return self.run("orphans", root=root)

@@ -7,7 +7,9 @@ from fixtures import sample_files
 def test_stdin_basic(cli, initialized_store):
     """Test basic stdin addition."""
     content = b"hello from stdin"
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
 
     assert result.returncode == 0
     # Should output hash with "(stdin)" label
@@ -25,10 +27,13 @@ def test_stdin_with_ref_name(cli, initialized_store):
     """Test stdin addition with --ref-name."""
     content = b"content with reference"
     result = cli.run(
-        "add", "-", "--ref-name", "test-ref",
+        "add",
+        "-",
+        "--ref-name",
+        "test-ref",
         root=initialized_store,
         input_data=content,
-        binary_mode=True
+        binary_mode=True,
     )
 
     assert result.returncode == 0
@@ -45,7 +50,9 @@ def test_stdin_with_ref_name(cli, initialized_store):
 def test_stdin_empty(cli, initialized_store):
     """Test empty stdin."""
     content = b""
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
 
     assert result.returncode == 0
     output = result.stdout.decode().strip()
@@ -60,7 +67,9 @@ def test_stdin_empty(cli, initialized_store):
 def test_stdin_binary_data(cli, initialized_store):
     """Test binary data with null bytes."""
     content = b"\x00\x01\x02\xff\xfe\xfd"
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
 
     assert result.returncode == 0
     hash_value = result.stdout.decode().strip().split()[0]
@@ -74,7 +83,9 @@ def test_stdin_large_content_triggers_compression(cli, initialized_store):
     """Test large content (≥4KB) triggers compression."""
     # 8KB of repeating data (should compress well)
     content = b"A" * 8192
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
 
     assert result.returncode == 0
     hash_value = result.stdout.decode().strip().split()[0]
@@ -85,7 +96,9 @@ def test_stdin_large_content_triggers_compression(cli, initialized_store):
     assert len(cat_result.stdout) == 8192
 
     # Verify compression occurred (object file should be smaller)
-    obj_path = initialized_store / "objects" / "blake3-256" / hash_value[:2] / hash_value[2:]
+    obj_path = (
+        initialized_store / "objects" / "blake3-256" / hash_value[:2] / hash_value[2:]
+    )
     assert obj_path.exists()
     obj_size = obj_path.stat().st_size
     # Object includes 16-byte header + compressed payload
@@ -97,7 +110,9 @@ def test_stdin_very_large_content_triggers_chunking(cli, initialized_store):
     """Test very large content (≥1MB) triggers chunking."""
     # 2MB of data (exceeds chunking threshold)
     content = b"B" * (2 * 1024 * 1024)
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
 
     assert result.returncode == 0
     hash_value = result.stdout.decode().strip().split()[0]
@@ -119,7 +134,9 @@ def test_stdin_roundtrip(cli, initialized_store):
     ]
 
     for content in test_contents:
-        result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+        result = cli.run(
+            "add", "-", root=initialized_store, input_data=content, binary_mode=True
+        )
         hash_value = result.stdout.decode().strip().split()[0]
 
         cat_result = cli.cat(hash_value, root=initialized_store)
@@ -129,7 +146,9 @@ def test_stdin_roundtrip(cli, initialized_store):
 def test_stdin_journal_recording(cli, initialized_store):
     """Test stdin addition is recorded in journal."""
     content = b"test content for journal"
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
     hash_value = result.stdout.decode().strip().split()[0]
 
     # Check journal
@@ -146,7 +165,9 @@ def test_stdin_journal_recording(cli, initialized_store):
 def test_stdin_orphan_detection(cli, initialized_store):
     """Test stdin addition without ref creates orphan."""
     content = b"orphaned content"
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
     hash_value = result.stdout.decode().strip().split()[0]
 
     # Should appear in orphan journal
@@ -161,10 +182,13 @@ def test_stdin_with_ref_not_orphan(cli, initialized_store):
     """Test stdin addition with ref does not create orphan."""
     content = b"referenced content"
     result = cli.run(
-        "add", "-", "--ref-name", "my-ref",
+        "add",
+        "-",
+        "--ref-name",
+        "my-ref",
         root=initialized_store,
         input_data=content,
-        binary_mode=True
+        binary_mode=True,
     )
     hash_value = result.stdout.decode().split()[0]
 
@@ -190,10 +214,13 @@ def test_stdin_real_world_curl_simulation(cli, initialized_store):
     ).encode("utf-8")
 
     result = cli.run(
-        "add", "-", "--ref-name", "api-response@20260123",
+        "add",
+        "-",
+        "--ref-name",
+        "api-response@20260123",
         root=initialized_store,
         input_data=json_content,
-        binary_mode=True
+        binary_mode=True,
     )
 
     assert result.returncode == 0
@@ -215,11 +242,13 @@ def test_stdin_mixed_with_paths_error(cli, initialized_store, workspace):
 
     # Try to mix stdin and file path - should fail
     result = cli.run(
-        "add", str(test_file), "-",
+        "add",
+        str(test_file),
+        "-",
         root=initialized_store,
         input_data=b"stdin content",
         binary_mode=True,
-        expect_success=False
+        expect_success=False,
     )
 
     assert result.returncode != 0
@@ -231,11 +260,13 @@ def test_stdin_multiple_stdin_error(cli, initialized_store):
     """Test error when specifying stdin multiple times."""
     # Try to specify stdin twice - should fail
     result = cli.run(
-        "add", "-", "-",
+        "add",
+        "-",
+        "-",
         root=initialized_store,
         input_data=b"content",
         binary_mode=True,
-        expect_success=False
+        expect_success=False,
     )
 
     assert result.returncode != 0
@@ -247,7 +278,9 @@ def test_stdin_unicode_content(cli, initialized_store):
     """Test Unicode content via stdin."""
     # Unicode content (emoji, various scripts)
     content = "Hello 世界! 🌍 Здравствуй Мир".encode("utf-8")
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
 
     assert result.returncode == 0
     hash_value = result.stdout.decode().strip().split()[0]
@@ -263,10 +296,14 @@ def test_stdin_hash_stability(cli, initialized_store):
     content = b"deterministic content"
 
     # Add same content twice
-    result1 = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result1 = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
     hash1 = result1.stdout.decode().strip().split()[0]
 
-    result2 = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result2 = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
     hash2 = result2.stdout.decode().strip().split()[0]
 
     # Should produce identical hashes (deduplication)
@@ -276,7 +313,9 @@ def test_stdin_hash_stability(cli, initialized_store):
 def test_stdin_stat_shows_blob(cli, initialized_store):
     """Test stat command shows stdin content as blob."""
     content = b"content for stat test"
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
     hash_value = result.stdout.decode().strip().split()[0]
 
     # Run stat
@@ -291,7 +330,9 @@ def test_stdin_stat_shows_blob(cli, initialized_store):
 def test_stdin_ls_shows_blob(cli, initialized_store):
     """Test ls command recognizes stdin content as blob."""
     content = b"content for ls test"
-    result = cli.run("add", "-", root=initialized_store, input_data=content, binary_mode=True)
+    result = cli.run(
+        "add", "-", root=initialized_store, input_data=content, binary_mode=True
+    )
     hash_value = result.stdout.decode().strip().split()[0]
 
     # Run ls
