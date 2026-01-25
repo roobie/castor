@@ -170,6 +170,8 @@ fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
     Store::init(root, algorithm)
         .with_context(|| format!("Failed to initialize store at {}", root.display()))?;
 
+    let full_path = std::path::absolute(root)?;
+    let full_path_lossy = full_path.to_string_lossy();
     let data = InitOutput {
         success: true,
         result_code: 0,
@@ -177,13 +179,14 @@ fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
         algorithm: algorithm.as_str().to_string(),
     };
 
-    output.write_info(&data, || {
-        format!(
-            "Initialized casq store at {}\nAlgorithm: {}\n",
-            root.display(),
-            algorithm.as_str()
-        )
-    })?;
+    use std::io::Write;
+    writeln!(
+        io::stderr(),
+        "Initialized casq store at {} (algorithm {})",
+        algorithm.as_str(),
+        full_path_lossy
+    )?;
+    output.write(&data, || format!("{}\n", full_path_lossy))?;
 
     Ok(())
 }
@@ -635,7 +638,7 @@ fn cmd_references_list(root: &Path, output: &OutputWriter) -> Result<()> {
         output.write(&data, || {
             let mut text = String::new();
             for r in &ref_infos {
-                text.push_str(&format!("{} -> {}\n", r.name, r.hash));
+                text.push_str(&format!("{} {}\n", r.hash, r.name));
             }
             text
         })?;

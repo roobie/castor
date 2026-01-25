@@ -6,7 +6,7 @@
 
 This is Alpha level software.
 
-`casq` (v0.4.0) is a single-binary tool for storing files and directories by their cryptographic hash. Think of it as a lightweight git object store or restic backend—but simpler, local-only, and purpose-built for content-addressed storage with modern efficiency features.
+`casq` is a single-binary tool for storing files and directories by their cryptographic hash. Think of it as a lightweight git object store or restic backend—but simpler, local-only, and purpose-built for content-addressed storage with modern efficiency features.
 
 **Why `casq`?**
 - **Automatic deduplication** - Identical content stored only once, even across different directories
