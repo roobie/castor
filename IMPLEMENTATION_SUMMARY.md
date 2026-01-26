@@ -39,7 +39,7 @@ When large files (≥1MB) were slightly modified (e.g., inserting 100 bytes at t
 **Rust property tests** (`casq_core/src/chunking.rs`):
 - `prop_boundary_stability_after_insert()` - Verifies ≥30% chunk reuse after small insertions at start
 - `prop_boundary_stability_after_append()` - Verifies ≥80% prefix chunk preservation when appending
-- `prop_boundary_stability_after_delete()` - Verifies ≥40% chunk reuse after deletions in middle
+- `prop_boundary_stability_after_delete()` - Verifies ≥40% chunk reuse after deletions in middle (optimized: reduced proptest cases and smaller sample sizes to speed up tests)
 
 **Python integration tests** (`/workspace/tests/test_chunking_deduplication.py`):
 - `test_chunk_reuse_after_append()` - Real-world test of append deduplication

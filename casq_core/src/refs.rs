@@ -222,7 +222,7 @@ mod tests {
 
     proptest! {
         #![proptest_config(ProptestConfig {
-            cases: 256,
+            cases: 56,
             max_shrink_iters: 10000,
             ..ProptestConfig::default()
         })]

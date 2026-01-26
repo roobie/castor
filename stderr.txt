@@ -1,0 +1,3 @@
+   Compiling casq_core v0.11.0 (/home/jani/devel/casq/casq_core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
+     Running unittests src/lib.rs (target/debug/deps/casq_core-cd3a79a8576544d1)

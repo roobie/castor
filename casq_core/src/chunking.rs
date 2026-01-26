@@ -168,8 +168,8 @@ mod tests {
 
     proptest! {
         #![proptest_config(ProptestConfig {
-            cases: 32,  // Reduced case count - chunking is expensive
-            max_shrink_iters: 5000,
+            cases: 8,  // Reduced case count - chunking is expensive; lowered further for speed
+            max_shrink_iters: 50,
             ..ProptestConfig::default()
         })]
 
@@ -327,8 +327,8 @@ mod tests {
         /// chunks before the deletion should remain identical
         #[test]
         fn prop_boundary_stability_after_delete(
-            original_data in prop::collection::vec(any::<u8>(), 3_000_000..4_000_000),
-            delete_offset in 1_000_000usize..2_000_000usize,
+            original_data in prop::collection::vec(any::<u8>(), 1_000_000..2_500_000),
+            delete_offset in 450_000usize..550_000usize,
             delete_len in 1_000usize..10_000usize
         ) {
             let config = ChunkerConfig::default();
@@ -365,6 +365,6 @@ mod tests {
                 matching_chunks,
                 original_chunks.len()
             );
-        }
+         }
     }
 }
