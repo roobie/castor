@@ -4,24 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## General rules
 
-_ _**CRITICAL**: Documentation in all forms (files in repo, memories etc) MUST be kept updated and current as part of ANY code change. Documentation updates are NOT optional and are NOT deferred - they are completed in the SAME work session as the code implementation. See "Documentation Requirements" section below for detailed guidelines.
+_ _**CRITICAL**: Documentation in all forms (files in repo, memories etc) MUST be kept updated and current as part of ANY code change. Documentation updates are NOT optional and are NOT deferred - they are completed in the SAME work session as the code implementation.
 
 - Always prefer Serena MCP tools.
 
 - `casq` has not yet had a stable release, so backwards compatibility is not a concern.
-
-## Testing and Quality Assurance Plans
-
-The project has dedicated implementation plans for advanced testing:
-
-- **[PROPERTY_TESTING_PLAN.md](PROPERTY_TESTING_PLAN.md)** - Phase 1: Property-based testing (immediate focus)
-- **[FUZZING_PLAN.md](FUZZING_PLAN.md)** - Future: Fuzzing strategy (deferred QA)
-
-These plans provide detailed implementation strategies for achieving production-grade robustness.
-
-## Documentation Requirements
-
-**CRITICAL: All code changes MUST be accompanied by corresponding documentation updates BEFORE the work is considered complete.**
 
 ### Documentation Update Checklist
 
@@ -34,14 +21,9 @@ When implementing changes, you MUST update the relevant documentation files as p
    - Update `/workspace/README.md` (main project overview)
    - Update `/workspace/casq_core/README.md` (if core library changes)
    - Update `/workspace/casq/README.md` (if CLI changes)
-   - Update `/workspace/NOTES.md` (if design/architecture changes)
 
 3. **For new tests or test infrastructure:**
-   - Update `/workspace/casq-test/README.md` (test suite documentation)
-   - Update `/workspace/TESTING.md` (testing guide)
-
-4. **For implementation milestones:**
-   - Create or update `/workspace/IMPLEMENTATION_SUMMARY.md` with details of what was implemented
+   - Update `/workspace/tests/README.md` (test suite documentation)
 
 ### What Requires Documentation Updates
 
@@ -58,19 +40,13 @@ When implementing changes, you MUST update the relevant documentation files as p
 
 ### Documentation Update Process
 
-**DO NOT:**
-- ❌ Implement a feature and say "documentation can be updated later"
-- ❌ Skip documentation updates because they seem minor
-- ❌ Update only one README when changes affect multiple areas
-- ❌ Leave documentation with outdated version numbers, test counts, or feature lists
-
 **DO:**
 - ✅ Update documentation in the SAME session as code implementation
 - ✅ Check ALL relevant README files for needed updates
 - ✅ Verify version numbers, test counts, and statistics are current
 - ✅ Update examples to use new features
 - ✅ Remove outdated limitations when features are implemented
-- ✅ Use TodoWrite to track documentation updates as separate tasks
+- ✅ Keep beans updated
 
 ### Example: Feature Implementation Flow
 
@@ -110,8 +86,8 @@ Key characteristics:
 - Immutable objects with stable content IDs
 - Tree-based directory representation
 - Garbage collection for unreferenced objects
-- **Transparent zstd compression** (files ≥ 4KB automatically compressed)
-- **Content-defined chunking** (files ≥ 1MB split into variable chunks for incremental backups)
+- Transparent zstd compression (files ≥ 4KB automatically compressed)
+- Content-defined chunking (files ≥ 1MB split into variable chunks for incremental backups)
 
 ## Project Structure
 
@@ -124,66 +100,19 @@ This is a **Rust workspace** with two crates:
 
 ## Build and Development Commands
 
-This project uses **mise** for task automation. All development tasks are defined in `mise.toml`.
-
-### Available Mise Tasks
-
-```bash
-# List all available tasks
-mise tasks
-
-# Fetch dependencies
-mise run deps
-
-# Update dependencies
-mise run deps-update
-
-# Upgrade dependencies (requires cargo-upgrade)
-mise run deps-upgrade
-
-# Format code
-mise run fmt
-
-# Lint (check formatting + clippy)
-mise run lint
-
-# Auto-fix clippy issues
-mise run lint-fix
-
-# Build (runs deps + lint first)
-mise run build
-
-# Run tests (runs build first)
-mise run test
-
-# Install casq (runs test first)
-mise run install
-
-# Publish to crates.io
-mise run publish
-
-# Build + test + install
-mise run all
-```
+This project uses **mise** for task automation. All development tools and tasks are defined in `mise.toml`. Query that file directly to see which tasks are available.
 
 ### Direct Cargo Commands
 
-You can also use cargo directly when needed:
+You can also use cargo and uv directly when needed:
 
 ```bash
-# Build specific crate
-cargo build -p casq
-cargo build -p casq_core
-
-# Build release version
-cargo build --release
-
-# Run the CLI
-cargo run -p casq -- <args>
-
 # Run tests for specific crate
 cargo test -p casq_core
 cargo test -- --nocapture
+
+# run all python tests
+uv run pytest tests/
 ```
 
 ## Architecture
@@ -238,155 +167,45 @@ $STORE_ROOT/
 
 ### CLI Commands
 
-```bash
-casq init [--root PATH] [--algo blake3]
-casq add PATH... [--ref-name NAME]
-casq add - [--ref-name NAME]  # Read from stdin (use "-" as path)
-casq materialize HASH DEST
-casq cat HASH          # Output blob to stdout
-casq ls HASH [--long]  # List tree contents or show blob info
-casq stat HASH         # Show object metadata
-casq gc [--dry-run]    # Garbage collect unreferenced objects
-casq orphans [--long]  # Find orphaned objects (blobs and trees)
-casq journal [--recent N] [--orphans]  # View operation journal
-casq refs add NAME HASH
-casq refs list
-casq refs rm NAME
-```
+See [./casq/CLI.md](./casq/CLI.md)
 
 ### CLI Output Conventions
 
 **stdout/stderr Separation:**
-- **JSON mode (`--json`)**: ONLY JSON goes to stdout. All informational messages, errors, and warnings go to stderr.
 - **Text mode**:
-  - stdout: Command results and data (hashes, file content, listings)
-  - stderr: Informational messages, confirmations, errors, empty state messages
+  - stdout: Command results and data in a intuituve format (hashes, file content, listings)
+  - stderr: Informational messages, notification, confirmations, errors, empty state messages
+- **JSON mode (`--json`)**: ONLY JSON goes to stdout. All informational messages, errors, and warnings go to stderr.
 
 **Implementation:**
 - Use `OutputWriter` abstraction (`output.write()`, `output.write_info()`, `output.write_error()`)
-- Manual stderr writes must check `!output.is_json()` to avoid polluting JSON mode output
 - Tests should strictly validate stdout/stderr separation (no lenient "or" assertions)
-
-### New Features: Orphan Discovery
-
-**Problem:** When running `casq add /path` without `--ref-name`, the hash is printed but not stored. These objects become orphaned and will be deleted by GC.
-
-**Solutions:**
-
-1. **`casq orphans` command** - Discover unreferenced objects on-demand:
-   - Identifies blobs and trees that exist in the store but have no references
-   - For trees: filters out child trees (only shows top-level orphan roots)
-   - For blobs: shows all unreferenced blobs
-   - Use `--long` for detailed information
-
-   ```bash
-   $ casq orphans
-   abc123...  blob
-   def456...  tree (15 entries)
-
-   $ casq orphans --long
-   Hash: abc123...
-   Type: blob
-   Approx size: 4096 bytes
-   ---
-   Hash: def456...
-   Type: tree
-   Entries: 15
-   Approx size: 8192 bytes
-   ---
-   ```
-
-2. **Operation Journal** - Automatically tracks `add` operations:
-   - Records timestamp, hash, original path, and metadata for each `add`
-   - Stored in `$STORE_ROOT/journal` as append-only text file
-   - Use `casq journal --orphans` to find orphaned entries with context
-
-   ```bash
-   $ casq journal --recent 10
-   2026-01-22 14:30:52  add  abc123def...  /important/data  entries=15,size=1024
-
-   $ casq journal --orphans
-   2026-01-22 14:30:52  add  abc123def...  /important/data  entries=15,size=1024
-   ```
-
-**Workflow:**
-```bash
-# User adds path but forgets to create ref
-$ casq add /important/data
-abc123def...  /important/data
-
-# Later: discover orphans with context
-$ casq journal --orphans
-2026-01-22 14:30:52  add  abc123def...  /important/data  entries=15,size=1024
-
-# Inspect before saving
-$ casq ls abc123def...
-file1.txt
-file2.txt
-subdir/
-
-# Create ref to save it
-$ casq refs add important-data abc123def...
-```
 
 ### Stdin Support
 
 **casq** supports reading content directly from stdin using the `-` argument:
 
 ```bash
-# Pipe curl output
-curl https://example.org | casq add --ref-name example-dot-org@20260123 -
-
-# Pipe echo output
-echo "quick note" | casq add --ref-name note-123 -
-
-# Pipe any command
-cat large-file.bin | casq add -
+# Example: pipe curl output
+curl https://example.org | casq put --ref-name example-dot-org@20260123 -
+af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
 ```
 
-**Features:**
-- Stdin content is stored as a blob (automatically compressed/chunked based on size)
-- Output format: `<hash> (stdin)`
-- Journal entries use `"(stdin)"` as the path
-- Cannot mix stdin with filesystem paths in the same command
-- Stdin can only be specified once per invocation
-
-**Error handling:**
-- TTY detection prevents accidental stdin usage without pipe
-- Clear error messages for invalid usage patterns
-
-**Examples:**
-
-```bash
-# Basic stdin
-$ echo "Hello World" | casq add -
-af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262 (stdin)
-
-# With reference
-$ curl https://api.example.com/data | casq add --ref-name api-snapshot -
-abc123... (stdin)
-Created reference: api-snapshot -> abc123...
-
-# Journal entry
-$ casq journal --recent 1
-2026-01-23 10:30:00  add  abc123...  (stdin)  entries=1,size=512
-```
-
-### JSON Output (v0.6.0+)
+### JSON Output
 
 **casq** supports machine-readable JSON output via the `--json` global flag, enabling scripting and automation.
 
 **Usage:**
 ```bash
 # All commands support --json
-casq --json init
-casq --json add myfile.txt
-casq --json ls
-casq --json gc --dry-run
+casq --json initialize
+casq --json put myfile.txt
+casq --json list
+casq --json collect-garbage --dry-run
 
 # Pipe through jq for processing
-casq --json ls | jq '.refs[].name'
-casq --json add file.txt | jq '.objects[0].hash'
+casq --json list | jq '.refs[].name'
+casq --json put file.txt | jq '.object.hash'
 ```
 
 **Standard Response Format:**
@@ -419,35 +238,15 @@ All JSON responses include:
 - Output abstraction layer in `casq/src/output.rs`
 - DTOs (Data Transfer Objects) for all command responses
 - Serde serialization with custom `Hash` serializer (outputs hex string)
-- Error responses on stderr in JSON mode
+- Information, notifications and error messages on stderr in JSON mode
 - Exit codes match `result_code` in JSON
 
 **Binary Data Limitation:**
-- `cat` command errors in JSON mode (binary data incompatible with JSON)
-- Use `materialize` or `stat` as alternatives
+- `cat` command errors in JSON mode
+- Use `materialize` or `metadata` as alternatives
 
 **Testing:**
 - All tests in `tests/`
-
-### Dependencies
-
-**casq_core:**
-- `blake3`: BLAKE3 cryptographic hashing
-- `hex`: Hash hex encoding/decoding
-- `tempfile`: Atomic object writes
-- `ignore`: Filesystem walking with .gitignore support
-- `thiserror`: Error definitions
-- `serde`: Serialization for JSON output (v0.6.0+)
-- `zstd`: Transparent zstd compression (v0.4.0+)
-- `fastcdc`: Content-defined chunking (v0.4.0+)
-
-**casq:**
-- `casq_core`: The core library
-- `clap`: CLI argument parsing with derive macros
-- `anyhow`: Error handling in main
-- `atty`: TTY detection for stdin validation
-- `serde`: Serialization support (v0.6.0+)
-- `serde_json`: JSON serialization (v0.6.0+)
 
 ## Design Principles
 
@@ -456,32 +255,8 @@ All JSON responses include:
 3. **Canonical hashing**: Tree entries sorted by name for stable hashes
 4. **Garbage collection**: Unreferenced objects removed via reachability analysis from refs
 5. **Transparent optimization**: Compression and chunking automatic, invisible to API consumers
-6. **Backward compatibility**: v1 objects remain readable, no migration required
 7. **Efficient storage**: 3-5x compression for typical data, incremental backups via chunking
 8. **Local-only**: No network features, encryption, or multi-user support (by design)
-
-## Implementation Notes
-
-### Compression and Chunking (v0.4.0+)
-
-**Compression (Transparent):**
-- **Threshold**: Files/blobs ≥ 4KB are automatically compressed with zstd (level 3)
-- **Algorithm**: Zstandard (fast compression ~500 MB/s, 3-5x typical reduction)
-- **Hash stability**: Hashes always computed on **uncompressed** data
-- **Trees**: Not compressed (typically small metadata)
-
-**Chunking (Content-Defined):**
-- **Algorithm**: FastCDC v2020 (improved boundary detection vs Ronomon)
-- **Threshold**: Files ≥ 1MB are split into variable-size chunks
-- **Chunk sizes**: Min 128KB, Average 512KB, Max 1MB (smaller min = better boundary shift resilience)
-- **Storage**: Chunks stored as regular blobs (with compression if ≥ 4KB)
-- **ChunkList object**: Contains array of (chunk_hash, chunk_size) pairs
-- **Benefits**: Incremental backups (change 1 byte → store ~1 chunk), cross-file deduplication, 60-80% chunk reuse after small edits
-
-**Behavior:**
-- Files < 4KB: Stored uncompressed as Blob
-- Files 4KB - 1MB: Compressed Blob (v2 format)
-- Files ≥ 1MB: ChunkList pointing to compressed chunks
 
 ### Implementation Workflow
 
@@ -489,7 +264,7 @@ When implementing new features:
 
 1. **Planning Phase:**
    - Identify which documentation files will need updates
-   - Add documentation update tasks to TodoWrite list
+   - Store plan as a bean task
 
 2. **Implementation Phase:**
    - Write code
@@ -505,7 +280,6 @@ When implementing new features:
 4. **Verification Phase:**
    - Run full test suite
    - Review all documentation changes
-   - Ensure no "TODO" markers for completed work
    - Mark work as complete only after documentation is updated
 
 **Remember: Documentation is not optional. Code without documentation updates is incomplete work.**
@@ -573,12 +347,11 @@ When implementing new features:
 
 ### Known Limitations (By Design)
 
-- No encryption at rest (deferred to future versions)
+- No encryption at rest
 - No parallel operations (single-threaded)
 - No remote backends (local-only by design)
 - No object caching (direct disk I/O)
-- No partial tree retrieval (materialize entire trees only)
-- No snapshot abstractions (use references for now)
+- No snapshot abstractions (use references)
 
 ### Storage Performance
 
@@ -599,7 +372,7 @@ When implementing new features:
 
 ## IMPORTANT: Keeping This Document Current
 
-When you implement changes to casq:
+For any change to this repository:
 
 1. **Immediately update this CLAUDE.md file** with any architectural, structural, or procedural changes
 2. **Update the "Current Implementation Status" section** when features are added or test counts change
