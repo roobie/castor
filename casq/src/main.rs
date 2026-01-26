@@ -14,7 +14,7 @@ use output::*;
 #[command(version)]
 struct Cli {
     /// Store root directory (defaults to CASQ_ROOT env var or ./casq-store)
-    #[arg(short, long, global = true)]
+    #[arg(short = 'R', long, global = true)]
     root: Option<PathBuf>,
 
     /// Output results as JSON
@@ -41,7 +41,7 @@ enum Commands {
         path: String,
 
         /// Create a reference to the added content
-        #[arg(long)]
+        #[arg(short, long)]
         reference: Option<String>,
     },
 
@@ -49,7 +49,7 @@ enum Commands {
     Materialize {
         /// Hash of the object to materialize
         #[arg(required = true)]
-        hash: String,
+        hash_or_reference: String,
 
         /// Destination path
         #[arg(required = true)]
@@ -60,14 +60,14 @@ enum Commands {
     Get {
         /// Hash of the blob
         #[arg(required = true)]
-        hash: String,
+        hash_or_reference: String,
     },
 
     /// List tree children
     List {
         /// Hash of the object
         #[arg(required = true)]
-        hash: String,
+        hash_or_reference: String,
 
         /// Show detailed information
         #[arg(short, long)]
@@ -78,7 +78,7 @@ enum Commands {
     Metadata {
         /// Hash of the object
         #[arg(required = true)]
-        hash: String,
+        hash_or_reference: String,
     },
 
     /// Garbage collect unreferenced objects
@@ -105,9 +105,11 @@ enum ReferencesCommands {
     /// Add a reference
     Add {
         /// Reference name
-        name: String,
+        #[arg(required = true)]
+        reference: String,
 
         /// Hash to reference
+        #[arg(required = true)]
         hash: String,
     },
 
@@ -117,7 +119,8 @@ enum ReferencesCommands {
     /// Remove a reference
     Remove {
         /// Reference name
-        name: String,
+        #[arg(required = true)]
+        reference: String,
     },
 }
 
@@ -137,20 +140,28 @@ fn main() {
     let result = match cli.command {
         Commands::Initialize { algorithm } => cmd_init(&root, &algorithm, &output),
         Commands::Put { path, reference } => cmd_put(&root, path, reference, &output),
-        Commands::Materialize { hash, destination } => {
-            cmd_materialize(&root, &hash, &destination, &output)
+        Commands::Materialize {
+            hash_or_reference,
+            destination,
+        } => cmd_materialize(&root, &hash_or_reference, &destination, &output),
+        Commands::Get { hash_or_reference } => cmd_get(&root, &hash_or_reference, &output),
+        Commands::List {
+            hash_or_reference,
+            long,
+        } => cmd_list(&root, &hash_or_reference, long, &output),
+        Commands::Metadata { hash_or_reference } => {
+            cmd_metadata(&root, &hash_or_reference, &output)
         }
-        Commands::Get { hash } => cmd_get(&root, &hash, &output),
-        Commands::List { hash, long } => cmd_list(&root, &hash, long, &output),
-        Commands::Metadata { hash } => cmd_metadata(&root, &hash, &output),
         Commands::CollectGarbage { dry_run } => cmd_collect_garbage(&root, dry_run, &output),
         Commands::FindOrphans { long } => cmd_get_orphans(&root, long, &output),
         Commands::References(references_cmd) => match references_cmd {
-            ReferencesCommands::Add { name, hash } => {
-                cmd_references_add(&root, &name, &hash, &output)
+            ReferencesCommands::Add { reference, hash } => {
+                cmd_references_add(&root, &reference, &hash, &output)
             }
             ReferencesCommands::List => cmd_references_list(&root, &output),
-            ReferencesCommands::Remove { name } => cmd_references_remove(&root, &name, &output),
+            ReferencesCommands::Remove { reference } => {
+                cmd_references_remove(&root, &reference, &output)
+            }
         },
     };
 
@@ -291,11 +302,40 @@ fn add_from_stdin(store: &Store) -> Result<Hash> {
     Ok(hash)
 }
 
-fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path, output: &OutputWriter) -> Result<()> {
+fn is_hash(s: &str) -> bool {
+    s.len() == 64
+        && s.bytes().all(|b| match b {
+            b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F' => true,
+            _ => false,
+        })
+}
+
+fn is_reference(s: &str) -> bool {
+    !is_hash(s)
+}
+
+fn get_hash(store: &Store, hash_or_reference_str: &str) -> Result<Hash> {
+    if is_reference(hash_or_reference_str) {
+        let maybe_hash: Option<Hash> = store.refs().get(hash_or_reference_str)?;
+        let hash = maybe_hash
+            .ok_or_else(|| anyhow::anyhow!("Unknown reference: {}", hash_or_reference_str))?;
+        Ok(hash)
+    } else {
+        Hash::from_hex(hash_or_reference_str)
+            .with_context(|| format!("Invalid hash: {}", hash_or_reference_str))
+    }
+}
+
+fn cmd_materialize(
+    root: &Path,
+    hash_or_reference_str: &str,
+    dest: &Path,
+    output: &OutputWriter,
+) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
-    let hash = Hash::from_hex(hash_str).with_context(|| format!("Invalid hash: {}", hash_str))?;
+    let hash = get_hash(&store, hash_or_reference_str)?;
 
     store
         .materialize(&hash, dest)
@@ -315,7 +355,7 @@ fn cmd_materialize(root: &Path, hash_str: &str, dest: &Path, output: &OutputWrit
     Ok(())
 }
 
-fn cmd_get(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_get(root: &Path, hash_or_reference_str: &str, output: &OutputWriter) -> Result<()> {
     if output.is_json() {
         anyhow::bail!(
             "The 'cat' command outputs binary data to stdout and cannot be used with --json.\n\
@@ -328,8 +368,7 @@ fn cmd_get(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
 
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
-
-    let hash = Hash::from_hex(hash_str).with_context(|| format!("Invalid hash: {}", hash_str))?;
+    let hash = get_hash(&store, hash_or_reference_str)?;
 
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -341,12 +380,16 @@ fn cmd_get(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
     Ok(())
 }
 
-fn cmd_list(root: &Path, hash_str: &String, long: bool, output: &OutputWriter) -> Result<()> {
+fn cmd_list(
+    root: &Path,
+    hash_or_reference_str: &String,
+    long: bool,
+    output: &OutputWriter,
+) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
-    // Hash was provided - show object contents
-    let hash = Hash::from_hex(hash_str).with_context(|| format!("Invalid hash: {}", hash_str))?;
+    let hash = get_hash(&store, hash_or_reference_str)?;
 
     // Check if it's a tree or blob
     let obj_path = store.object_path(&hash);
@@ -431,11 +474,11 @@ fn cmd_list(root: &Path, hash_str: &String, long: bool, output: &OutputWriter) -
     Ok(())
 }
 
-fn cmd_metadata(root: &Path, hash_str: &str, output: &OutputWriter) -> Result<()> {
+fn cmd_metadata(root: &Path, hash_or_reference_str: &str, output: &OutputWriter) -> Result<()> {
     let store =
         Store::open(root).with_context(|| format!("Failed to open store at {}", root.display()))?;
 
-    let hash = Hash::from_hex(hash_str).with_context(|| format!("Invalid hash: {}", hash_str))?;
+    let hash = get_hash(&store, hash_or_reference_str)?;
 
     let obj_path = store.object_path(&hash);
     if !obj_path.exists() {

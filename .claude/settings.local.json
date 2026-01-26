@@ -17,7 +17,10 @@
       "Bash(beans query:*)",
       "Bash(beans create:*)",
       "Bash(beans update:*)",
-      "Bash(./target/debug/casq:*)"
+      "Bash(./target/debug/casq:*)",
+      "mcp__serena__get_current_config",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__serena__find_symbol"
     ]
   },
   "hooks": {

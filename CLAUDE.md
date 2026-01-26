@@ -414,8 +414,7 @@ All JSON responses include:
 - Use `materialize` or `stat` as alternatives
 
 **Testing:**
-- 26 integration tests in `casq-test/tests/test_json_output.py`
-- Full backward compatibility verified (all existing tests pass)
+- All tests in `tests/`
 
 ### Dependencies
 
@@ -519,7 +518,7 @@ When implementing new features:
 
 ## Current Implementation Status
 
-### Core Features (v0.6.0)
+### Core Features
 
 **Storage Engine:**
 - ✅ Content-addressed storage with BLAKE3 hashing
@@ -533,29 +532,17 @@ When implementing new features:
 - ✅ v2 format with compression support
 
 **Commands:**
-- ✅ `init` - Initialize new store
-- ✅ `add` - Add files/directories to store (supports stdin with `-`)
+- ✅ `initialize` - Initialize new store
+- ✅ `put` - Add files/directories to store (supports stdin with `-`)
 - ✅ `materialize` - Restore files from store
-- ✅ `cat` - Output blob content to stdout
-- ✅ `ls` - List tree contents
-- ✅ `stat` - Show object metadata
-- ✅ `gc` - Garbage collection (handles all three object types)
-- ✅ `orphans` - Find unreferenced objects (blobs and trees)
-- ✅ `journal` - View operation history
-- ✅ `refs` - Manage named references
+- ✅ `get` - Output blob content to stdout
+- ✅ `list` - List tree contents
+- ✅ `metadata` - Show object metadata
+- ✅ `collect-garbage` - Garbage collection (handles all three object types)
+- ✅ `find-orphans` - Find unreferenced objects (blobs and trees)
+- ✅ `references` - Manage named references
 - ✅ `--json` - JSON output for all commands (v0.6.0+)
-- ✅ **Stdout/stderr separation** - Text mode: informational output → stderr; JSON mode: all data → stdout (v0.7.0+)
-
-**Test Coverage:**
-- ✅ 124 Rust unit tests (100% pass rate, including 3 boundary stability property tests)
-- ✅ 69 Python integration tests (including 7 chunking deduplication tests)
-- ✅ Compression threshold tests
-- ✅ Chunking boundary tests with v2020 FastCDC
-- ✅ Boundary stability tests (insert/append/delete resilience)
-- ✅ Round-trip integrity tests
-- ✅ Deduplication tests (whole files and chunks)
-- ✅ GC correctness with all object types
-- ✅ JSON output format tests
+- ✅ **Stdout/stderr separation** - Only command data should go to stdout, whereas informational output shall go to stderr.
 
 **Module Organization:**
 - `casq_core/src/lib.rs` - Library exports
@@ -578,7 +565,7 @@ When implementing new features:
 - No remote backends (local-only by design)
 - No object caching (direct disk I/O)
 - No partial tree retrieval (materialize entire trees only)
-- No snapshot abstractions (use refs for now)
+- No snapshot abstractions (use references for now)
 
 ### Storage Performance
 

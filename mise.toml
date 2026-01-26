@@ -3,7 +3,10 @@ uv = "0.9"
 rust = "1.93"
 just = "1.46"
 go = "1.25"
+watchexec = "2"
 
+[tasks.watch]
+run = "watchexec mise run fmt"
 
 [tasks.deps]
 description = "Fetch cargo dependencies"
