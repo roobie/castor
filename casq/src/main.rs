@@ -190,13 +190,18 @@ fn cmd_init(root: &Path, algo: &str, output: &OutputWriter) -> Result<()> {
         algorithm: algorithm.as_str().to_string(),
     };
 
-    use std::io::Write;
-    writeln!(
-        io::stderr(),
-        "Initialized casq store at {} (algorithm {})",
-        algorithm.as_str(),
-        full_path_lossy
-    )?;
+    // Only write informational message to stderr in text mode
+    if !output.is_json() {
+        use std::io::Write;
+        writeln!(
+            io::stderr(),
+            "Initialized casq store at {} (algorithm {})",
+            full_path_lossy,
+            algorithm.as_str()
+        )?;
+    }
+
+    // Write data to stdout (path in text mode, JSON in JSON mode)
     output.write(&data, || format!("{}\n", full_path_lossy))?;
 
     Ok(())
@@ -269,9 +274,7 @@ fn cmd_put(
     };
 
     // Output reference confirmation to stderr (if applicable)
-    if let Some(ref r) = reference
-    // && !output.is_json()
-    {
+    if let Some(ref r) = reference {
         use std::io::Write;
         let _ = writeln!(io::stderr(), "{}", r.name);
     }

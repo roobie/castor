@@ -108,7 +108,8 @@ def test_find_orphans_empty_store(casq_env):
 
     proc_orphans = run_casq(casq_bin, env, "find-orphans")
     assert proc_orphans.returncode == 0
-    assert "No orphaned objects" in proc_orphans.stderr or proc_orphans.stdout == ""
+    assert "No orphaned objects" in proc_orphans.stderr
+    assert proc_orphans.stdout == ""
 
 
 def test_find_orphans_detects_unreferenced(casq_env):
@@ -203,4 +204,5 @@ def test_gc_then_find_orphans_empty(casq_env):
     # Find orphans should be empty
     proc_orphans = run_casq(casq_bin, env, "find-orphans")
     assert proc_orphans.returncode == 0
-    assert "No orphaned objects" in proc_orphans.stderr or proc_orphans.stdout == ""
+    assert "No orphaned objects" in proc_orphans.stderr
+    assert proc_orphans.stdout == ""

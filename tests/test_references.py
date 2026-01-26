@@ -13,7 +13,8 @@ def test_references_list_empty(casq_env):
 
     proc_list = run_casq(casq_bin, env, "references", "list")
     assert proc_list.returncode == 0
-    assert "No references" in proc_list.stderr or proc_list.stdout == ""
+    assert "No references" in proc_list.stderr
+    assert proc_list.stdout == ""
 
 
 def test_references_add(casq_env):

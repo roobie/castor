@@ -1,4 +1,3 @@
-```bash
 Content-addressed file store using BLAKE3
 
 Usage: casq [OPTIONS] <COMMAND>
@@ -16,9 +15,7 @@ Commands:
   help             Print this message or the help of the given subcommand(s)
 
 Options:
-  -r, --root <ROOT>  Store root directory (defaults to CASQ_ROOT env var or ./casq-store)
+  -R, --root <ROOT>  Store root directory (defaults to CASQ_ROOT env var or ./casq-store)
       --json         Output results as JSON
   -h, --help         Print help
   -V, --version      Print version
-
-```

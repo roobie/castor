@@ -254,6 +254,19 @@ casq refs list
 casq refs rm NAME
 ```
 
+### CLI Output Conventions
+
+**stdout/stderr Separation:**
+- **JSON mode (`--json`)**: ONLY JSON goes to stdout. All informational messages, errors, and warnings go to stderr.
+- **Text mode**:
+  - stdout: Command results and data (hashes, file content, listings)
+  - stderr: Informational messages, confirmations, errors, empty state messages
+
+**Implementation:**
+- Use `OutputWriter` abstraction (`output.write()`, `output.write_info()`, `output.write_error()`)
+- Manual stderr writes must check `!output.is_json()` to avoid polluting JSON mode output
+- Tests should strictly validate stdout/stderr separation (no lenient "or" assertions)
+
 ### New Features: Orphan Discovery
 
 **Problem:** When running `casq add /path` without `--ref-name`, the hash is printed but not stored. These objects become orphaned and will be deleted by GC.
