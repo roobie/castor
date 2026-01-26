@@ -17,7 +17,7 @@ This is **Alpha** level software.
 - **Simple & fast** - No databases, no network, just files on disk with BLAKE3 hashing
 - **Embeddable** - Rust library (`casq_core`) + CLI binary, easily integrated into your tools
 
-## Canonical example
+## Representative CLI example
 
 ```bash
 # Use an environment variable to set the root. It is also possible to use --root/-R per invocation. Defaults to current working directory.
@@ -46,12 +46,19 @@ casq metadata tree@1 --json #>
 
 # List the children of tree
 casq list tree@1 #>file1\nfile2 etc
+casq list --long tree@1 #>(listing of tree's children with most metadata)
+
+# Read a blob and pipe it through less
+casq get be616640346d71f639f55014a17229a8e6ab7d164b44a702d1c04da0d4bd48e3 | less
 
 # List all references
 casq references list
-# Add a reference
-casq references add HASH REFERENCE
-casq references remove REFERENCE
+# Add a reference; key => value: casq references add REFERENCE HASH
+casq references add my-custom-ref be616640346d71f639f55014a17229a8e6ab7d164b44a702d1c04da0d4bd48e3
+# So now we can `get` it by ref
+casq get my-custom-ref | less
+# Remove the reference: casq references remove REFERENCE
+casq references remove my-custom-ref
 
 # Shows all objects that are unreferenced
 casq find-orphans #>...
@@ -61,3 +68,16 @@ casq collect-garbage --dry-run
 # Deletes all unreferenced data
 casq collect-garbage
 ```
+
+So, general usage pattern:
+1. `initialize`
+2. `put` (with --reference)
+3. read: `metadata`, `get`, `list`
+4. manage references: `references add/list/remove` and `find-orphans`
+5. `collect-garbage`
+
+## License
+
+Free, and open-source
+
+> Apache-2.0
