@@ -1,6 +1,7 @@
 """
 Pytest configuration and shared fixtures for casq black-box tests.
 """
+
 import os
 import subprocess
 from pathlib import Path

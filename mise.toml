@@ -20,9 +20,15 @@ run = "cargo update"
 description = "Upgrade cargo dependencies"
 run = "cargo install cargo-upgrade && cargo-upgrade upgrade"
 
-[tasks.fmt]
-description = "Format code"
+[tasks.fmt_rust]
+description = "Format rust code"
 run = "cargo fmt --all"
+
+[tasks.fmt_python]
+run = "uv run ruff format ."
+
+[tasks.fmt]
+depends = ["fmt_rust", "fmt_python"]
 
 [tasks.lint]
 description = "Check formatting and run clippy"

@@ -4,6 +4,7 @@ Integration tests for chunking deduplication and incremental backups.
 Tests verify that FastCDC v2020 with 128KB min chunks provides good
 deduplication when files are modified (insertions, deletions, appends).
 """
+
 import os
 from pathlib import Path
 from .helpers import run_casq, write_test_file
@@ -47,7 +48,9 @@ def test_chunk_reuse_after_append(casq_env):
     # With perfect deduplication: v1 has ~4 chunks, v2 shares those + adds ~1 new chunk
     # So we should see ~5-6 total chunk objects (plus 2 ChunkList objects, plus 1 tree/blob if small)
     # Without deduplication: we'd have ~8 chunk objects (4 + 4)
-    assert num_objects < 12, f"Expected good deduplication, but found {num_objects} objects"
+    assert num_objects < 12, (
+        f"Expected good deduplication, but found {num_objects} objects"
+    )
 
 
 def test_chunk_reuse_after_prepend(casq_env):
@@ -64,7 +67,9 @@ def test_chunk_reuse_after_prepend(casq_env):
     original_file.write_bytes(original_data)
 
     # Put original file
-    proc1 = run_casq(casq_bin, env, "put", str(original_file), "--reference", "original")
+    proc1 = run_casq(
+        casq_bin, env, "put", str(original_file), "--reference", "original"
+    )
     assert proc1.returncode == 0
     hash1 = proc1.stdout.strip()
 
@@ -73,7 +78,9 @@ def test_chunk_reuse_after_prepend(casq_env):
     original_file.write_bytes(prepended_data)
 
     # Put modified file
-    proc2 = run_casq(casq_bin, env, "put", str(original_file), "--reference", "modified")
+    proc2 = run_casq(
+        casq_bin, env, "put", str(original_file), "--reference", "modified"
+    )
     assert proc2.returncode == 0
     hash2 = proc2.stdout.strip()
 
@@ -88,7 +95,9 @@ def test_chunk_reuse_after_prepend(casq_env):
     # Original: ~6 chunks, Modified: should reuse ~4-5 chunks
     # Without deduplication: ~12 chunk objects total
     # With deduplication: ~7-9 chunk objects total
-    assert num_objects < 15, f"Expected chunk reuse after prepend, but found {num_objects} objects"
+    assert num_objects < 15, (
+        f"Expected chunk reuse after prepend, but found {num_objects} objects"
+    )
 
 
 def test_small_file_not_chunked(casq_env):
@@ -114,7 +123,9 @@ def test_small_file_not_chunked(casq_env):
     blobs = [o for o in objects if o.is_file()]
 
     # Should be exactly 1 object (the compressed blob)
-    assert len(blobs) == 1, f"Small file should create 1 blob, found {len(blobs)} objects"
+    assert len(blobs) == 1, (
+        f"Small file should create 1 blob, found {len(blobs)} objects"
+    )
 
 
 def test_large_file_is_chunked(casq_env):
@@ -128,6 +139,7 @@ def test_large_file_is_chunked(casq_env):
     # Create a 2MB file with random entropic data (not compressible, ensures chunking boundaries)
     large_file = workspace / "large.bin"
     import os
+
     large_data = os.urandom(2 * 1024 * 1024)  # 2MB of random data
     large_file.write_bytes(large_data)
 
@@ -142,7 +154,9 @@ def test_large_file_is_chunked(casq_env):
 
     # Should have multiple objects: 1 ChunkList + N chunk blobs (at least 3 chunks for 2MB)
     # With 128KB min, 512KB avg, we expect ~4 chunks + 1 ChunkList = 5 objects
-    assert len(blobs) >= 4, f"Large file should create ChunkList + chunks, found {len(blobs)} objects"
+    assert len(blobs) >= 4, (
+        f"Large file should create ChunkList + chunks, found {len(blobs)} objects"
+    )
 
 
 def test_identical_chunks_deduped(casq_env):
@@ -178,7 +192,9 @@ def test_identical_chunks_deduped(casq_env):
     # Without deduplication: file1 (~4 chunks) + file2 (~4 chunks) = ~8 chunks + 2 ChunkLists = 10
     # With deduplication: shared chunks stored once, so fewer total objects
     # We should see savings from shared chunks
-    assert num_objects < 12, f"Expected chunk deduplication across files, found {num_objects} objects"
+    assert num_objects < 12, (
+        f"Expected chunk deduplication across files, found {num_objects} objects"
+    )
 
 
 def test_roundtrip_chunked_file(casq_env):
@@ -250,4 +266,6 @@ def test_delete_middle_chunk_reuse(casq_env):
     # We expect significant chunk reuse from sections A, C, D
     # Without deduplication: ~14 objects (8 chunks + 2 ChunkLists + refs/trees)
     # With deduplication: ~10 objects (with shared chunks)
-    assert num_objects < 16, f"Expected chunk reuse after deletion, found {num_objects} objects"
+    assert num_objects < 16, (
+        f"Expected chunk reuse after deletion, found {num_objects} objects"
+    )

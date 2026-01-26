@@ -1,6 +1,7 @@
 """
 Tests for casq initialize command.
 """
+
 import json
 from .helpers import run_casq, assert_json_success
 
@@ -72,13 +73,7 @@ def test_initialize_custom_root(tmp_path, casq_bin):
     custom_root = tmp_path / "custom-store"
     env = {}  # No CASQ_ROOT env var
 
-    proc = run_casq(
-        casq_bin,
-        env,
-        "--root",
-        str(custom_root),
-        "initialize"
-    )
+    proc = run_casq(casq_bin, env, "--root", str(custom_root), "initialize")
 
     assert proc.returncode == 0
     assert custom_root.exists()

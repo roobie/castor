@@ -1,6 +1,7 @@
 """
 Tests for error handling and UX.
 """
+
 from .helpers import run_casq
 
 
@@ -13,7 +14,10 @@ def test_command_without_initialize(casq_env):
     assert proc.returncode != 0
     # Should mention store error
     error_output = proc.stderr + proc.stdout
-    assert "failed to open store" in error_output.lower() or "not found" in error_output.lower()
+    assert (
+        "failed to open store" in error_output.lower()
+        or "not found" in error_output.lower()
+    )
 
 
 def test_unknown_command(casq_env):
@@ -35,7 +39,9 @@ def test_invalid_hash_format(casq_env):
 
     proc = run_casq(casq_bin, env, "get", "notahexstring")
     assert proc.returncode != 0
-    assert "invalid" in (proc.stderr + proc.stdout).lower()
+    # there should be no data on stdout (there exist no data)
+    assert proc.stdout.strip() == ""
+    assert "unknown" in (proc.stderr).lower()
 
 
 def test_nonexistent_hash(casq_env):
@@ -59,7 +65,11 @@ def test_put_nonexistent_file(casq_env):
     assert proc.returncode != 0
 
     error_output = proc.stderr + proc.stdout
-    assert "failed" in error_output.lower() or "not found" in error_output.lower() or "no such file" in error_output.lower()
+    assert (
+        "failed" in error_output.lower()
+        or "not found" in error_output.lower()
+        or "no such file" in error_output.lower()
+    )
 
 
 def test_materialize_to_existing_file(casq_env):
@@ -89,6 +99,7 @@ def test_stdin_from_tty_fails(casq_env):
     # Note: This test may not work in CI environments without a real TTY
     # The test is here for documentation, but may need to be skipped in CI
     import sys
+
     if not sys.stdin.isatty():
         # Skip test if not running with TTY
         return
@@ -112,9 +123,9 @@ def test_missing_required_argument(casq_env):
     proc = run_casq(casq_bin, env, "get")
     assert proc.returncode != 0
 
-    error_output = proc.stderr + proc.stdout
     # Should show usage or mention missing argument
-    assert "hash" in error_output.lower() or "Usage:" in error_output
+    assert proc.stdout.strip() == ""
+    assert "usage" in (proc.stderr).lower()
 
 
 def test_materialize_missing_destination(casq_env):
@@ -163,6 +174,7 @@ def test_json_error_format(casq_env):
 
     # Error should be in stderr as JSON
     import json
+
     try:
         error_data = json.loads(proc.stderr)
         assert error_data.get("success") is False

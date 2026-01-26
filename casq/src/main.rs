@@ -303,11 +303,7 @@ fn add_from_stdin(store: &Store) -> Result<Hash> {
 }
 
 fn is_hash(s: &str) -> bool {
-    s.len() == 64
-        && s.bytes().all(|b| match b {
-            b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F' => true,
-            _ => false,
-        })
+    s.len() == 64 && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
 fn is_reference(s: &str) -> bool {
@@ -315,7 +311,9 @@ fn is_reference(s: &str) -> bool {
 }
 
 fn get_hash(store: &Store, hash_or_reference_str: &str) -> Result<Hash> {
-    if is_reference(hash_or_reference_str) {
+    if hash_or_reference_str.is_empty() {
+        Err(anyhow::anyhow!("Missing hash or reference."))
+    } else if is_reference(hash_or_reference_str) {
         let maybe_hash: Option<Hash> = store.refs().get(hash_or_reference_str)?;
         let hash = maybe_hash
             .ok_or_else(|| anyhow::anyhow!("Unknown reference: {}", hash_or_reference_str))?;
@@ -382,7 +380,7 @@ fn cmd_get(root: &Path, hash_or_reference_str: &str, output: &OutputWriter) -> R
 
 fn cmd_list(
     root: &Path,
-    hash_or_reference_str: &String,
+    hash_or_reference_str: &str,
     long: bool,
     output: &OutputWriter,
 ) -> Result<()> {

@@ -1,6 +1,7 @@
 """
 Tests for casq metadata command.
 """
+
 import json
 from .helpers import run_casq, assert_json_success, write_test_file, write_test_tree
 
@@ -99,7 +100,10 @@ def test_metadata_nonexistent_hash(casq_env):
     proc_meta = run_casq(casq_bin, env, "metadata", fake_hash)
 
     assert proc_meta.returncode != 0
-    assert "not found" in proc_meta.stderr.lower() or "not found" in proc_meta.stdout.lower()
+    assert (
+        "not found" in proc_meta.stderr.lower()
+        or "not found" in proc_meta.stdout.lower()
+    )
 
 
 def test_metadata_invalid_hash(casq_env):
@@ -111,4 +115,5 @@ def test_metadata_invalid_hash(casq_env):
     proc_meta = run_casq(casq_bin, env, "metadata", invalid_hash)
 
     assert proc_meta.returncode != 0
-    assert "invalid" in proc_meta.stderr.lower() or "invalid" in proc_meta.stdout.lower()
+    assert proc_meta.stdout.strip() == ""
+    assert "unknown" in proc_meta.stderr.lower()

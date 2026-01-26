@@ -1,6 +1,7 @@
 """
 Tests for reference management (references add/list/remove).
 """
+
 import json
 from .helpers import run_casq, assert_json_success
 
@@ -68,8 +69,9 @@ def test_references_list_json(casq_env):
     assert len(data["refs"]) > 0
 
     # Find our reference
-    ref_found = any(r["name"] == "json-ref" and r["hash"] == obj_hash
-                    for r in data["refs"])
+    ref_found = any(
+        r["name"] == "json-ref" and r["hash"] == obj_hash for r in data["refs"]
+    )
     assert ref_found
 
 
@@ -81,7 +83,9 @@ def test_references_add_json(casq_env):
     proc_put = run_casq(casq_bin, env, "put", "-", input="test\n")
     obj_hash = proc_put.stdout.strip()
 
-    proc_add = run_casq(casq_bin, env, "--json", "references", "add", "new-ref", obj_hash)
+    proc_add = run_casq(
+        casq_bin, env, "--json", "references", "add", "new-ref", obj_hash
+    )
     assert proc_add.returncode == 0
 
     data = assert_json_success(proc_add.stdout, ["name", "hash"])

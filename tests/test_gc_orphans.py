@@ -1,6 +1,7 @@
 """
 Tests for garbage collection and orphan detection.
 """
+
 import json
 from .helpers import run_casq, assert_json_success, write_test_file
 
@@ -49,6 +50,7 @@ def test_collect_garbage_removes_orphans(casq_env):
 
     # Count objects before GC
     import os
+
     obj_count_before = sum(1 for _ in objects_dir.rglob("*") if _.is_file())
     assert obj_count_before > 0
 
@@ -68,8 +70,7 @@ def test_collect_garbage_keeps_referenced(casq_env):
 
     # Add object with reference
     proc_put = run_casq(
-        casq_bin, env, "put", "-", "--reference", "keep-me",
-        input="important data\n"
+        casq_bin, env, "put", "-", "--reference", "keep-me", input="important data\n"
     )
     kept_hash = proc_put.stdout.strip()
 
@@ -150,8 +151,13 @@ def test_find_orphans_ignores_referenced(casq_env):
 
     # Add object with reference
     proc_put = run_casq(
-        casq_bin, env, "put", "-", "--reference", "not-orphan",
-        input="referenced data\n"
+        casq_bin,
+        env,
+        "put",
+        "-",
+        "--reference",
+        "not-orphan",
+        input="referenced data\n",
     )
     ref_hash = proc_put.stdout.strip()
 

@@ -1,12 +1,14 @@
 """
 Helper utilities for casq tests.
 """
+
 import json
 import subprocess
 from pathlib import Path
 from typing import Any, Dict
 
 ROOT = Path(__file__).resolve().parent.parent
+
 
 def assert_json_success(stdout: str, expected_keys: list = None) -> Dict[str, Any]:
     """
@@ -21,7 +23,9 @@ def assert_json_success(stdout: str, expected_keys: list = None) -> Dict[str, An
     """
     data = json.loads(stdout)
     assert data.get("success") is True, f"Expected success=True, got: {data}"
-    assert data.get("result_code") == 0, f"Expected result_code=0, got: {data.get('result_code')}"
+    assert data.get("result_code") == 0, (
+        f"Expected result_code=0, got: {data.get('result_code')}"
+    )
 
     if expected_keys:
         for key in expected_keys:
@@ -42,7 +46,9 @@ def assert_json_error(stderr: str) -> Dict[str, Any]:
     """
     data = json.loads(stderr)
     assert data.get("success") is False, f"Expected success=False, got: {data}"
-    assert data.get("result_code") != 0, f"Expected non-zero result_code, got: {data.get('result_code')}"
+    assert data.get("result_code") != 0, (
+        f"Expected non-zero result_code, got: {data.get('result_code')}"
+    )
     assert "error" in data, "Expected 'error' field in error output"
 
     return data
@@ -88,7 +94,9 @@ def compare_golden(actual: str, golden_name: str, update: bool = False) -> bool:
     return True
 
 
-def run_casq(casq_bin, env, *args, input=None, check=False) -> subprocess.CompletedProcess:
+def run_casq(
+    casq_bin, env, *args, input=None, check=False
+) -> subprocess.CompletedProcess:
     """
     Helper to run casq and capture stdout/stderr.
 
