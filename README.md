@@ -1,6 +1,8 @@
 # `casq`
 
 ![casq logo](assets/logo.jpeg)
+[![License](https://img.shields.io/github/license/roobie/casq?style=for-the-badge)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/roobie/casq?style=for-the-badge)](https://github.com/roobie/casq/releases)
 
 **A local content-addressed file store with compression and chunking.**
 
