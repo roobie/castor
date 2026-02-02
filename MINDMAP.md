@@ -88,6 +88,8 @@
 
 [28] **Component: CLI test expectations & JSON handling** - Integration tests enforce strict stdout/stderr separation: informational messages (e.g., "Initialized casq store") go to stderr, command data or JSON responses go to stdout. Helpers provide `assert_json_success` and `assert_json_error` to validate JSON shapes. Some commands are explicitly incompatible with `--json` (tests expect `get` to fail with `--json`). See `tests/*` and `tests/helpers.py` [12][11].
 
+[29] **Bug: chunking::tests::prop_boundary_stability_after_delete failing** - Test previously assumed global chunk reuse ratio >=40% after middle deletions. Deterministic counterexamples caused flaky/failed runs. Fix: test now asserts prefix-preservation for chunks that end before the deletion offset (>=95% preserved). If deletion falls inside the first chunk, the test falls back to a reduced reuse heuristic (>=30%). See `casq_core/src/chunking.rs` tests for details.
+
 ## Useful references (files/paths)
 
 [14] **Key files** - `casq_core/src/lib.rs` [6], `casq_core/src/object.rs` (object format) [8], `casq/src/main.rs` (CLI) [7], `casq/src/output.rs` (JSON/stderr handling) [12], `CLAUDE.md` (dev rules) [13], `FUZZING_PLAN.md` (fuzz targets) [16], `tests/README.md` (integration tests) [17].

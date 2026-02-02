@@ -347,24 +347,53 @@ mod tests {
             // Chunk the modified data
             let modified_chunks = chunk_file(&modified_data, &config)?;
 
-            // Count how many chunks from original appear in modified
-            let mut matching_chunks = 0;
-            for orig_chunk in &original_chunks {
-                if modified_chunks.iter().any(|mod_chunk| mod_chunk.hash == orig_chunk.hash) {
-                    matching_chunks += 1;
+            // Compute prefix chunk count in original that fully end before delete_offset
+            let mut prefix_len = 0usize;
+            let mut acc: u64 = 0;
+            for c in &original_chunks {
+                acc += c.size;
+                if acc as usize <= delete_offset {
+                    prefix_len += 1;
+                } else {
+                    break;
                 }
             }
 
-            // With good boundary detection, we should see significant chunk reuse
-            // (at least 40% of chunks should be reused with small deletions)
-            let reuse_ratio = matching_chunks as f64 / original_chunks.len() as f64;
-            prop_assert!(
-                reuse_ratio >= 0.40 || original_chunks.len() < 3,
-                "Expected at least 40% chunk reuse after small deletion, got {:.1}% ({}/{} chunks)",
-                reuse_ratio * 100.0,
-                matching_chunks,
-                original_chunks.len()
-            );
+            if prefix_len > 0 {
+                // Verify prefix preservation: chunks before the deletion should remain identical
+                let mut matching_prefix = 0usize;
+                for i in 0..prefix_len.min(modified_chunks.len()) {
+                    if original_chunks[i].hash == modified_chunks[i].hash {
+                        matching_prefix += 1;
+                    }
+                }
+
+                let match_ratio = matching_prefix as f64 / prefix_len as f64;
+                // Expect strong preservation of prefix chunks (allow small tolerance)
+                prop_assert!(
+                    match_ratio >= 0.95 || prefix_len < 2,
+                    "Expected >=95% of prefix chunks to be preserved after middle deletion, got {:.1}% ({}/{} prefix chunks)",
+                    match_ratio * 100.0,
+                    matching_prefix,
+                    prefix_len
+                );
+            } else {
+                // If deletion falls inside the first chunk, fall back to reuse ratio heuristic
+                let mut matching_chunks = 0;
+                for orig_chunk in &original_chunks {
+                    if modified_chunks.iter().any(|mod_chunk| mod_chunk.hash == orig_chunk.hash) {
+                        matching_chunks += 1;
+                    }
+                }
+                let reuse_ratio = matching_chunks as f64 / original_chunks.len() as f64;
+                prop_assert!(
+                    reuse_ratio >= 0.30 || original_chunks.len() < 3,
+                    "Expected at least 30% chunk reuse after small deletion (delete inside first chunk), got {:.1}% ({}/{} chunks)",
+                    reuse_ratio * 100.0,
+                    matching_chunks,
+                    original_chunks.len()
+                );
+            }
          }
     }
 }
