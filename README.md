@@ -78,6 +78,16 @@ So, general usage pattern:
 4. manage references: `references add/list/remove` and `find-orphans`
 5. `collect-garbage`
 
+Development
+
+Run test coverage for the core crate with the mise task (requires cargo-tarpaulin):
+
+```bash
+# Generate HTML + XML coverage reports for casq_core
+mise run coverage_core
+# Reports are written to target/coverage/casq_core/
+```
+
 ## License
 
 Free, and open-source

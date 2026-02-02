@@ -189,15 +189,21 @@ let stats = store.gc(dry_run)?;
 
 ## Test Coverage
 
+Automated coverage reporting is available for the casq_core crate. We use cargo-tarpaulin to gather coverage and generate HTML and XML reports.
+
+Run via mise:
+
+```bash
+# Install tarpaulin (if missing) and generate reports
+mise run coverage_core
+
+# Alternatively run directly
+cargo install cargo-tarpaulin || true
+cargo tarpaulin -p casq_core --out Html --out Xml
+# Reports will be collected under target/coverage/casq_core/
 ```
-✓ 121 unit tests passing (100% pass rate)
-✓ 23 property tests (generative invariant verification)
-✓ 1 doctest passing
-✓ 100% core functionality coverage
-✓ Edge cases: corruption, empty files/dirs, large files, permissions
-✓ Round-trip testing: add → store → materialize → verify
-✓ Compression/chunking: thresholds, boundaries, deduplication
-```
+
+The reports include per-file coverage and an XML (Cobertura) output suitable for CI dashboards. Keep coverage reports in CI as a quality gate when needed.
 
 ### Test Categories
 

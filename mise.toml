@@ -49,6 +49,11 @@ run = "cargo build"
 description = "Run core tests"
 depends = ["build"]
 run = "cargo test"
+
+[tasks.coverage_core]
+description = "Run coverage for casq_core using cargo-tarpaulin (outputs HTML+XML to target/coverage/casq_core)"
+run = "cargo install cargo-tarpaulin || true && mkdir -p target/coverage/casq_core && cargo tarpaulin -p casq_core --out Xml --out Html --timeout 120 || true && mv tarpaulin-report.* target/coverage/casq_core/ || true"
+
 [tasks.test_cli]
 description = "Run cli tests"
 depends = ["build"]

@@ -54,7 +54,7 @@
 
 [10] **Component: Garbage Collection & Refs** - Refs are GC roots in `refs/`. GC: mark reachable objects from refs (traverse trees and chunklists) then sweep unreferenced objects. Dry-run supported [8].
 
-[11] **Component: Tests & Quality** - casq_core contains extensive unit and property tests (listed in README). CI expects clippy clean and cargo fmt. Repository contains `tests/` for integration tests and `FUZZING_PLAN.md` for fuzz targets [8][3].
+[11] **Component: Tests & Quality** - casq_core contains extensive unit and property tests (listed in README). CI expects clippy clean and cargo fmt. Repository contains `tests/` for integration tests and `FUZZING_PLAN.md` for fuzz targets [8][3]. Coverage reporting task (`mise run coverage_core`) has been added to generate HTML and XML reports for the casq_core crate.
 
 [12] **Decision: JSON & stdout/stderr separation** - All commands support `--json` where only JSON is written to stdout; informational messages and errors go to stderr. This enables scripting reliability and is enforced throughout the CLI output layer [9].
 
@@ -81,6 +81,12 @@
 [25] **Tree & ChunkList binary formats** - Tree entry encoding: type(1)|mode(4 LE)|hash(32)|name_len(1)|name bytes (max name_len=255). ChunkList entry: 32-byte hash + 8-byte size (40 bytes per entry). See `casq_core/src/tree.rs` and `casq_core/src/object.rs` [17][14].
 
 ---
+
+[26] **Component: Python test harness (integration tests)** - Pytest-based black-box tests live in `tests/` and exercise the CLI via subprocess. Key fixtures: `casq_bin` (builds binary at `target/debug/casq` if missing) and `casq_env` (sets `CASQ_ROOT` to an isolated `tmp_path/casq-store` per test). Tests run from repository root and assume the binary is compiled when needed. See `tests/conftest.py` and `tests/helpers.py` [11][17].
+
+[27] **Component: Golden files & helpers** - Tests use a `tests/golden/` directory managed by `tests/helpers.compare_golden`. Golden files are created/updated when missing or when update flag is used; tests compare exact outputs against these golden files for UX stability. See `tests/helpers.py` [17].
+
+[28] **Component: CLI test expectations & JSON handling** - Integration tests enforce strict stdout/stderr separation: informational messages (e.g., "Initialized casq store") go to stderr, command data or JSON responses go to stdout. Helpers provide `assert_json_success` and `assert_json_error` to validate JSON shapes. Some commands are explicitly incompatible with `--json` (tests expect `get` to fail with `--json`). See `tests/*` and `tests/helpers.py` [12][11].
 
 ## Useful references (files/paths)
 

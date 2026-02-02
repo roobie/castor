@@ -100,7 +100,7 @@ This is a **Rust workspace** with two crates:
 
 ## Build and Development Commands
 
-This project uses **mise** for task automation. All development tools and tasks are defined in `mise.toml`. Query that file directly to see which tasks are available.
+This project uses **mise** for task automation. All development tools and tasks are defined in `mise.toml`. Query that file directly to see which tasks are available. A new coverage task has been added to the mise tasks: `coverage_core` generates HTML and XML coverage reports for the `casq_core` crate (requires `cargo-tarpaulin` and writes reports to `target/coverage/casq_core/`).
 
 ### Direct Cargo Commands
 

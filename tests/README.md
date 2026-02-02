@@ -71,3 +71,15 @@ def test_json_output(casq_env):
 - Each test gets fresh store in `tmp_path/casq-store`
 - Tests are independent and can run in parallel
 - Golden files capture expected UX output (update intentionally)
+
+## Coverage
+
+Coverage reporting for the `casq_core` crate is available via the mise task added to the repository. It uses `cargo-tarpaulin` to produce HTML and XML (Cobertura) reports.
+
+```bash
+# Generate coverage reports for casq_core
+mise run coverage_core
+# Reports will be written to target/coverage/casq_core/
+```
+
+CI pipelines may ingest the XML output for dashboards or quality gates.
