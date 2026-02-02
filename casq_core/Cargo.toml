@@ -21,3 +21,4 @@ fastcdc = "3.1"                       # Content-defined chunking
 
 [dev-dependencies]
 proptest = "1.4"                      # Property-based testing
+serde_json = "1.0"

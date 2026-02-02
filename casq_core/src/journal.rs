@@ -200,6 +200,23 @@ mod tests {
     }
 
     #[test]
+    fn test_journal_entry_invalid_timestamp() {
+        // Invalid timestamp should error
+        let hash = Hash::hash_bytes(b"test");
+        let line = format!("notatime|add|{}|/path|meta", hash.to_hex());
+        let result = JournalEntry::from_line(&line);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_journal_entry_invalid_hash() {
+        // Invalid hash should error
+        let line = "1737|add|zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz|/path|meta";
+        let result = JournalEntry::from_line(line);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_journal_open_creates_file() {
         let temp_dir = TempDir::new().unwrap();
         let journal_path = temp_dir.path().join("journal");

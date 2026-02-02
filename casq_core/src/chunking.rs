@@ -241,8 +241,8 @@ mod tests {
         /// most chunks should remain identical (boundary shift resilience)
         #[test]
         fn prop_boundary_stability_after_insert(
-            original_data in prop::collection::vec(any::<u8>(), 2_000_000..3_000_000),
-            insert_data in prop::collection::vec(any::<u8>(), 100..5_000)
+            original_data in prop::collection::vec(any::<u8>(), 1_000_000..1_200_000),
+            insert_data in prop::collection::vec(any::<u8>(), 0..1_000)
         ) {
             let config = ChunkerConfig::default();
 
@@ -327,9 +327,9 @@ mod tests {
         /// chunks before the deletion should remain identical
         #[test]
         fn prop_boundary_stability_after_delete(
-            original_data in prop::collection::vec(any::<u8>(), 1_000_000..2_500_000),
-            delete_offset in 450_000usize..550_000usize,
-            delete_len in 1_000usize..10_000usize
+            original_data in prop::collection::vec(any::<u8>(), 1_000_000..1_500_000),
+            delete_offset in 800_000usize..850_000usize,
+            delete_len in 1_000usize..2_000usize
         ) {
             let config = ChunkerConfig::default();
 

@@ -1120,6 +1120,74 @@ mod tests {
     }
 
     #[test]
+    fn test_read_object_header_too_short_and_payload_mismatch() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Create a file that's too short to be a valid header
+        let obj_path = temp_dir.path().join("shortobj");
+        std::fs::write(&obj_path, b"short").unwrap();
+
+        // read_object_header should error
+        assert!(store.read_object_header(&obj_path).is_err());
+
+        // Now create a fake object with header + small payload
+        use crate::object::ObjectHeader;
+        use crate::object::ObjectType;
+        use crate::object::CompressionType;
+
+        let header = ObjectHeader::new(ObjectType::Blob, store.algorithm(), CompressionType::None, 10);
+        let mut data = Vec::new();
+        data.extend_from_slice(&header.encode());
+        data.extend_from_slice(&[1,2,3,4,5]); // only 5 bytes payload
+        let obj_path2 = temp_dir.path().join("payload_mismatch");
+        std::fs::write(&obj_path2, &data).unwrap();
+
+        let res = store.read_object_payload(&obj_path2, 10);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_get_blob_chunklist_missing_and_wrong_chunk_type() {
+        use crate::object::{ChunkList, ChunkEntry, ObjectHeader, ObjectType, CompressionType};
+
+        let temp_dir = TempDir::new().unwrap();
+        let store = Store::init(temp_dir.path(), Algorithm::Blake3).unwrap();
+
+        // Prepare a chunk hash that does not exist
+        let missing_chunk_hash = Hash::hash_bytes(b"missingchunk");
+        let chunk_entry = ChunkEntry { hash: missing_chunk_hash, size: 4 };
+        let chunk_list = ChunkList { chunks: vec![chunk_entry.clone()] };
+        let chunk_list_payload = chunk_list.encode();
+
+        // File hash (ChunkList object name)
+        let file_hash = Hash::hash_bytes(b"file-with-missing-chunk");
+        let header = ObjectHeader::new(ObjectType::ChunkList, store.algorithm(), CompressionType::None, chunk_list_payload.len() as u64);
+
+        // Write ChunkList object into store
+        let obj_path = store.object_path(&file_hash);
+        if let Some(parent) = obj_path.parent() { std::fs::create_dir_all(parent).unwrap(); }
+        let mut f = std::fs::File::create(&obj_path).unwrap();
+        f.write_all(&header.encode()).unwrap();
+        f.write_all(&chunk_list_payload).unwrap();
+        f.flush().unwrap();
+
+        // get_blob should fail because the referenced chunk is missing
+        let res = store.get_blob(&file_hash);
+        assert!(res.is_err());
+
+        // Now create a chunk object but with wrong object type (Tree instead of Blob)
+        let chunk_obj_path = store.object_path(&missing_chunk_hash);
+        if let Some(parent) = chunk_obj_path.parent() { std::fs::create_dir_all(parent).unwrap(); }
+        let wrong_header = ObjectHeader::new(ObjectType::Tree, store.algorithm(), CompressionType::None, 0);
+        std::fs::write(&chunk_obj_path, wrong_header.encode()).unwrap();
+
+        // get_blob should now error with wrong chunk type
+        let res2 = store.get_blob(&file_hash);
+        assert!(res2.is_err());
+    }
+
+    #[test]
     fn test_journal_records_add_path() {
         let temp_dir = TempDir::new().unwrap();
         let store = Store::init(temp_dir.path().join("store"), Algorithm::Blake3).unwrap();

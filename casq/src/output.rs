@@ -315,3 +315,47 @@ pub struct RefsRmOutput {
     pub result_code: u8,
     pub name: String,
 }
+
+// -------------------------
+// Tests for output module
+// -------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::anyhow;
+    use casq_core::ObjectType;
+
+    #[derive(serde::Serialize)]
+    struct Simple { success: bool, result_code: u8, msg: String }
+
+    #[test]
+    fn test_output_writer_json_and_text_write() {
+        // JSON mode
+        let writer_json = OutputWriter::new(true);
+        let data = Simple { success: true, result_code: 0, msg: "ok".to_string() };
+        let _ = writer_json.write(&data, || "text".to_string());
+        let _ = writer_json.write_info(&data, || "info".to_string());
+        writer_json.write_error(&anyhow!("boom"), 1);
+
+        // Text mode
+        let writer_text = OutputWriter::new(false);
+        let _ = writer_text.write(&data, || "plain text".to_string());
+        let _ = writer_text.write_info(&data, || "info text".to_string());
+        writer_text.write_error(&anyhow!("oops"), 2);
+    }
+
+    #[test]
+    fn test_orphaninfo_from_orphanroot() {
+        use casq_core::OrphanRoot;
+        use casq_core::Hash;
+
+        let hash = Hash::hash_bytes(b"abc");
+        let root = OrphanRoot { hash, object_type: ObjectType::Blob, entry_count: None, approx_size: 123 };
+        let info: OrphanInfo = root.into();
+        assert_eq!(info.hash, hash);
+        assert_eq!(info.object_type, "blob");
+        assert_eq!(info.entry_count, None);
+        assert_eq!(info.approx_size, 123);
+    }
+}

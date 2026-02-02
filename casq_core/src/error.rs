@@ -187,3 +187,57 @@ impl From<ignore::Error> for Error {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_constructors_and_display() {
+        let e = Error::corrupted_object("/tmp/x", "bad");
+        assert!(format!("{}", e).contains("Corrupted object"));
+
+        let e = Error::invalid_hash("nope");
+        assert!(format!("{}", e).contains("Invalid hash"));
+
+        let e = Error::object_not_found("abcd");
+        assert!(format!("{}", e).contains("Object not found"));
+
+        let e = Error::invalid_store("/tmp", "broken");
+        assert!(format!("{}", e).contains("Invalid store"));
+
+        let e = Error::invalid_ref("badref");
+        assert!(format!("{}", e).contains("Invalid reference"));
+
+        let e = Error::ref_not_found("name");
+        assert!(format!("{}", e).contains("Reference not found"));
+
+        let e = Error::invalid_object_type("expected", "got");
+        assert!(format!("{}", e).contains("Invalid object type"));
+
+        let e = Error::path_exists("/tmp/x");
+        assert!(format!("{}", e).contains("Path already exists"));
+
+        let e = Error::unsupported_algorithm("X");
+        assert!(format!("{}", e).contains("Unsupported algorithm"));
+
+        let e = Error::compression_error("zstd fail");
+        assert!(format!("{}", e).contains("Compression error"));
+
+        let e = Error::invalid_chunk_list("size");
+        assert!(format!("{}", e).contains("Invalid chunk list"));
+
+        let e = Error::invalid_chunk("bad chunk");
+        assert!(format!("{}", e).contains("Invalid chunk"));
+    }
+
+    #[test]
+    fn test_from_utf8_error() {
+        let bytes = [0xffu8];
+        let res = std::str::from_utf8(&bytes);
+        assert!(res.is_err());
+        let utf8_err = res.unwrap_err();
+        let err: Error = utf8_err.into();
+        assert!(format!("{}", err).contains("UTF-8 error"));
+    }
+}

@@ -221,6 +221,40 @@ mod tests {
         assert!(Algorithm::from_id(99).is_err());
     }
 
+    #[test]
+    fn test_hash_serde_serialize_and_debug() {
+        let hash = Hash::hash_bytes(b"serde test");
+        let json = serde_json::to_string(&hash).unwrap();
+        // JSON string should contain the hex value
+        assert!(json.contains(&hash.to_hex()));
+
+        let dbg = format!("{:?}", hash);
+        assert!(dbg.contains("Hash("));
+        assert!(dbg.contains(&hash.to_hex()));
+    }
+
+    #[test]
+    fn test_hash_reader_and_file() {
+        use std::io::Cursor;
+        use std::io::Write;
+        // hash_reader
+        let data = b"reader data";
+        let cursor = Cursor::new(&data[..]);
+        let h1 = Hash::hash_reader(cursor).unwrap();
+        let h2 = Hash::hash_bytes(data);
+        assert_eq!(h1, h2);
+
+        // hash_file
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let path = temp_dir.path().join("file.dat");
+        let mut f = std::fs::File::create(&path).unwrap();
+        f.write_all(data).unwrap();
+        f.flush().unwrap();
+
+        let hf = Hash::hash_file(&path).unwrap();
+        assert_eq!(hf, h2);
+    }
+
     // Property-based tests
     use proptest::prelude::*;
 
